@@ -44,8 +44,8 @@ Calendrier : e-mail 1 à J+1, e-mail 2 à J+3, e-mail 3 à J+7, e-mail 4 à J+14
 
 Bonjour,
 
-Hier, BridgeToLeads vous a trouvé 10 {{ contact.METIER | default : "entreprises" }} sans site web à
-{{ contact.VILLE | default : "votre ville" }}. Voici comment transformer cette liste en rendez-vous :
+Hier, BridgeToLeads vous a trouvé 10 entreprises sans site web (recherche : {{ contact.METIER | default : "votre métier" }}
+à {{ contact.VILLE | default : "votre ville" }}). Voici comment transformer cette liste en rendez-vous :
 
 1. **Appelez plutôt qu'écrire** : ces entreprises n'ont pas de site, elles lisent rarement leurs e-mails.
 2. **Commencez par les avis** : « J'ai vu que vous aviez 120 avis très positifs sur Google, mais aucun site
@@ -138,8 +138,8 @@ Patrick – VORELIK
 
 Hi,
 
-Yesterday, BridgeToLeads found you 10 {{ contact.METIER | default : "businesses" }} with no website in
-{{ contact.VILLE | default : "your city" }}. Here's how to turn that list into meetings:
+Yesterday, BridgeToLeads found you 10 businesses with no website (search: {{ contact.METIER | default : "your trade" }}
+in {{ contact.VILLE | default : "your city" }}). Here's how to turn that list into meetings:
 
 1. **Call, don't email**: businesses without a website rarely check their inbox.
 2. **Start with their reviews**: "I saw you have 120 great reviews on Google, but no website for people to find you."
