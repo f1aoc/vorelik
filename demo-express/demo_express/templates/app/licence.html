@@ -1,0 +1,45 @@
+{% extends "app/base.html" %}
+{% block titre %}{{ _("Licence") }} · Démo Express{% endblock %}
+{% block contenu %}
+  <h1>{{ _("Licence") }}</h1>
+  {% if ok %}<p class="succes" role="status">{{ ok }}</p>{% endif %}
+  {% if erreur %}<p class="alerte" role="alert">{{ erreur }}</p>{% endif %}
+
+  {% if etat.utilisable %}
+    <section class="carte">
+      <h2>✔ {{ _("Licence active") }}</h2>
+      {% if etat.client %}<p>{{ _("Titulaire") }} : {{ etat.client }}{% if etat.email %} ({{ etat.email }}){% endif %}</p>{% endif %}
+      {% if etat.cle_masquee %}<p>{{ _("Clé") }} : <code>{{ etat.cle_masquee }}</code></p>{% endif %}
+      {% if etat.hors_ligne_depuis_longtemps %}
+        <p class="alerte">{{ _("Votre licence n'a pas pu être vérifiée récemment. Connectez-vous à Internet : sans vérification, l'application se bloquera dans {n} jour(s).").format(n=etat.jours_restants) }}</p>
+      {% endif %}
+      <div class="actions">
+        <form method="post" action="/licence/verifier"><button class="bouton" type="submit">{{ _("Vérifier maintenant") }}</button></form>
+        <form method="post" action="/licence/liberer" data-confirmer="{{ _('Libérer la licence de cet ordinateur ? Vous pourrez l\'activer sur un autre ordinateur.') }}" onsubmit="return confirm(this.dataset.confirmer)">
+          <button class="bouton bouton-discret" type="submit">{{ _("Libérer (changer d'ordinateur)") }}</button>
+        </form>
+      </div>
+    </section>
+  {% else %}
+    <section class="carte">
+      <h2>{% if etat.statut == "absente" %}{{ _("Activez Démo Express") }}{% else %}⚠ {{ _("Licence inactive") }}{% endif %}</h2>
+      <p>{{ etat.message }}</p>
+      {% if etat.statut in ("absente", "invalide") %}
+        <form method="post" action="/licence">
+          <label for="cle_licence">{{ _("Clé de licence") }}</label>
+          <input id="cle_licence" name="cle_licence" required autocomplete="off" spellcheck="false" maxlength="200" placeholder="DEX-…">
+          <p class="petit">{{ _("Elle s'affiche sur la page « Merci » juste après votre paiement (elle commence par « DEX- »). Clé perdue ? Écrivez au support avec l'adresse e-mail de votre achat. L'activation demande une connexion à Internet.") }}</p>
+          <button class="bouton" type="submit">{{ _("Activer") }}</button>
+        </form>
+      {% else %}
+        <form method="post" action="/licence/verifier"><button class="bouton" type="submit">{{ _("Vérifier maintenant") }}</button></form>
+      {% endif %}
+      {% if lien_achat %}<p><a class="bouton bouton-discret" href="{{ lien_achat }}" target="_blank" rel="noopener">{{ _("Acheter une licence") }}</a></p>{% endif %}
+    </section>
+  {% endif %}
+
+  <section class="carte">
+    <h2>{{ _("Comment ça marche") }}</h2>
+    <p class="petit">{{ _("La clé est vérifiée en ligne au démarrage puis une fois par jour. Seuls la clé et un identifiant anonyme de cet ordinateur sont envoyés au serveur de licences. Sans Internet, l'application reste utilisable {jours} jours après la dernière vérification réussie. Licence valable sur 2 ordinateurs. En cas de remboursement, la licence est désactivée.").format(jours=tolerance) }}</p>
+  </section>
+{% endblock %}

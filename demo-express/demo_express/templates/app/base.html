@@ -13,8 +13,13 @@
     <nav>
       <a href="/">{{ _("Nouvelle démo") }}</a>
       <a href="/reglages">{{ _("Réglages") }}</a>
+      <a href="/licence">{{ _("Licence") }}</a>
     </nav>
   </header>
+  {% set etat_licence = licence() %}
+  {% if etat_licence.utilisable and etat_licence.hors_ligne_depuis_longtemps %}
+    <p class="alerte bandeau-licence">{{ _("Licence non vérifiée depuis plusieurs jours : connectez-vous à Internet.") }} <a href="/licence">{{ _("Licence") }}</a></p>
+  {% endif %}
   <main class="contenu">
     {% block contenu %}{% endblock %}
   </main>

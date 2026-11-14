@@ -6,12 +6,15 @@
   /maquette/{id}    la maquette elle-même (?export=1 : version d'export)
   /photo            photos de la fiche, relayées depuis Google avec la clé du client
   /reglages         clé Google Places, signature du vendeur et langue
+  /licence          activation, vérification, libération de la licence (sans licence active, tout y mène)
 
 Les fiches et photos Google restent en mémoire (le temps de la session), jamais sur le disque ni dans un export.
 """
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import hashlib
 import io
 import re
@@ -20,7 +23,7 @@ import zipfile
 from collections import OrderedDict
 from pathlib import Path
 from typing import Awaitable, Callable
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -29,6 +32,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from demo_express import __version__, capture, maquette, messages, places
+from demo_express import licence as lic
 from demo_express.familles import FAMILLES
 from demo_express.langue import AUTO, _, langue_courante
 from demo_express.reglages import Reglages
@@ -56,13 +60,46 @@ class Memoire(OrderedDict):
 Capturer = Callable[[str, Path], Awaitable[capture.Captures]]
 
 
-def creer_app(reglages: Reglages, hotes: list[str] | None = None, capturer: Capturer | None = None) -> FastAPI:
+# Toujours accessibles, même sans licence active
+LIBRES = re.compile(r"^/(licence(/.*)?|reglages(/.*)?|static/.*)$")
+
+
+async def entretien_licence(licence: lic.Licence, intervalle: float = 3600) -> None:
+    """Vérification au démarrage, puis dès qu'elle est due (toutes les 24 h)."""
+    premier = True
+    while True:
+        with contextlib.suppress(Exception):
+            if premier or licence.verification_due():
+                await asyncio.to_thread(licence.verifier)
+        premier = False
+        await asyncio.sleep(intervalle)
+
+
+def creer_app(reglages: Reglages, hotes: list[str] | None = None, capturer: Capturer | None = None,
+              licence: lic.Licence | None = None) -> FastAPI:
     capturer = capturer or capture.capturer
-    app = FastAPI(title="Démo Express", docs_url=None, redoc_url=None, openapi_url=None)
+    licence = licence or lic.licence_par_defaut(reglages.dossier)
+
+    @contextlib.asynccontextmanager
+    async def cycle(_app):
+        tache = asyncio.get_running_loop().create_task(entretien_licence(licence))
+        yield
+        tache.cancel()
+
+    app = FastAPI(title="Démo Express", docs_url=None, redoc_url=None, openapi_url=None, lifespan=cycle)
+
+    @app.middleware("http")
+    async def controle_licence(request: Request, suivant):
+        if not LIBRES.match(request.url.path) and not licence.etat().utilisable:
+            if request.method == "GET":
+                return RedirectResponse("/licence", status_code=303)
+            return JSONResponse({"erreur": _("Licence inactive : ouvrez l'écran Licence.")}, status_code=403)
+        return await suivant(request)
+
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=hotes or HOTES)
     app.mount("/static", StaticFiles(directory=DOSSIER / "static"), name="static")
     env = Environment(loader=FileSystemLoader(DOSSIER / "templates"), autoescape=select_autoescape(["html"]))
-    env.globals.update(_=_, version=__version__)
+    env.globals.update(_=_, version=__version__, licence=licence.etat)
     fiches: Memoire = Memoire(30)
     retouches: dict[str, maquette.Options] = {}  # par entreprise, le temps de la session
     images: Memoire = Memoire(120)
@@ -267,6 +304,45 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None, capturer: Capt
         reglages.enregistrer_langue(langue)
         fiches.clear()  # textes Google dans la nouvelle langue
         return RedirectResponse("/reglages?enregistre=1", status_code=303)
+
+    # --- Licence ------------------------------------------------------------------------------------------
+
+    def vers_licence(**params) -> RedirectResponse:
+        return RedirectResponse("/licence" + (f"?{urlencode(params)}" if params else ""), status_code=303)
+
+    @app.get("/licence", response_class=HTMLResponse)
+    async def licence_page(request: Request, ok: str = "", erreur: str = ""):
+        return page("licence", request, etat=licence.etat(), ok=ok, erreur=erreur, tolerance=lic.TOLERANCE_JOURS,
+                    lien_achat=lic.LIENS_ACHAT.get(langue_courante(), lic.LIEN_ACHAT))
+
+    @app.post("/licence")
+    async def licence_activer(request: Request, cle_licence: str = Form("")):
+        if not meme_origine(request):
+            return Response(status_code=403)
+        try:
+            etat = await asyncio.to_thread(licence.activer, cle_licence)
+        except lic.ErreurLicence as e:
+            return vers_licence(erreur=str(e))
+        if etat.client:
+            return vers_licence(ok=_("Merci, {nom} ! Votre licence est activée sur cet ordinateur.").format(nom=etat.client))
+        return vers_licence(ok=_("Merci ! Votre licence est activée sur cet ordinateur."))
+
+    @app.post("/licence/verifier")
+    async def licence_verifier(request: Request):
+        if not meme_origine(request):
+            return Response(status_code=403)
+        etat = await asyncio.to_thread(licence.verifier)
+        return vers_licence(ok=_("Licence vérifiée : tout est en ordre.")) if etat.utilisable else vers_licence()
+
+    @app.post("/licence/liberer")
+    async def licence_liberer(request: Request):
+        if not meme_origine(request):
+            return Response(status_code=403)
+        try:
+            await asyncio.to_thread(licence.liberer)
+        except lic.ErreurLicence as e:
+            return vers_licence(erreur=str(e))
+        return vers_licence(ok=_("Licence libérée : vous pouvez maintenant l'activer sur un autre ordinateur."))
 
     @app.post("/reglages/oublier-cle")
     async def oublier_cle(request: Request):

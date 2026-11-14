@@ -57,6 +57,7 @@ def fiche_google(**autres) -> dict:
 def isolation(tmp_path, monkeypatch):
     monkeypatch.setenv("DEMO_DONNEES", str(tmp_path / "donnees"))
     monkeypatch.setenv("DEMO_LANGUE", "fr")
+    monkeypatch.setenv("DEMO_SANS_LICENCE", "1")  # licence testée à part (test_licence.py)
     monkeypatch.delenv("GOOGLE_MAPS_API_KEY", raising=False)
 
 
