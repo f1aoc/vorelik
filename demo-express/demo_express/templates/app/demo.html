@@ -1,0 +1,54 @@
+{% extends "app/base.html" %}
+{% block titre %}{{ fiche.nom }} · Démo Express  <script>
+    // Aperçus à la vraie largeur d'écran (1280 px ordinateur, 390 px téléphone), réduits pour tenir dans leur cadre
+    for (const [selecteur, largeur] of [[".cadre-ordinateur", 1280], [".cadre-telephone", 390]]) {
+      const cadre = document.querySelector(selecteur);
+      const ajuster = () => {
+        const echelle = cadre.clientWidth / largeur;
+        const iframe = cadre.querySelector("iframe");
+        iframe.style.height = `${cadre.clientHeight / echelle}px`;
+        iframe.style.transform = `scale(${echelle})`;
+      };
+      new ResizeObserver(ajuster).observe(cadre);
+      ajuster();
+    }
+  </script>
+{% endblock %}
+{% block contenu %}
+  <section class="entete-demo">
+    <div>
+      <h1>{{ fiche.nom }}</h1>
+      <p>{{ fiche.metier }}{% if fiche.ville %} · {{ fiche.ville }}{% endif %} · {{ _("Modèle") }} : {{ famille }}</p>
+      <p class="petit">{{ fiche.photos|length }} {{ _("photos") }} · {{ fiche.avis|length }} {{ _("avis") }} · {{ fiche.horaires and _("horaires") or _("pas d'horaires") }}</p>
+    </div>
+    <div class="actions">
+      <a class="bouton" href="/maquette/{{ fiche.id }}" target="_blank" rel="noopener">{{ _("Ouvrir en plein écran") }}</a>
+    </div>
+  </section>
+
+  <div class="apercus">
+    <figure class="ecran ecran-ordinateur">
+      <figcaption>{{ _("Ordinateur") }}</figcaption>
+      <div class="cadre-ordinateur"><iframe src="/maquette/{{ fiche.id }}" title="{{ _('Aperçu ordinateur') }}" loading="lazy"></iframe></div>
+    </figure>
+    <figure class="ecran ecran-telephone">
+      <figcaption>{{ _("Téléphone") }}</figcaption>
+      <div class="cadre-telephone"><iframe src="/maquette/{{ fiche.id }}" title="{{ _('Aperçu téléphone') }}" loading="lazy"></iframe></div>
+    </figure>
+  </div>
+  <p class="petit">{{ _("Les photos et avis viennent de la fiche Google de l'entreprise : ils ne sont pas enregistrés sur votre ordinateur. La maquette porte la mention « Maquette de démonstration ».") }}</p>
+  <script>
+    // Aperçus à la vraie largeur d'écran (1280 px ordinateur, 390 px téléphone), réduits pour tenir dans leur cadre
+    for (const [selecteur, largeur] of [[".cadre-ordinateur", 1280], [".cadre-telephone", 390]]) {
+      const cadre = document.querySelector(selecteur);
+      const ajuster = () => {
+        const echelle = cadre.clientWidth / largeur;
+        const iframe = cadre.querySelector("iframe");
+        iframe.style.height = `${cadre.clientHeight / echelle}px`;
+        iframe.style.transform = `scale(${echelle})`;
+      };
+      new ResizeObserver(ajuster).observe(cadre);
+      ajuster();
+    }
+  </script>
+{% endblock %}

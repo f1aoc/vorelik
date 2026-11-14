@@ -1,0 +1,58 @@
+:root { --nuit: #0A0F1F; --texte: #0F1733; --doux: #5B6480; --fond: #F5F7FC; --carte: #fff; --bord: #E3E8F4;
+  --accent: #6D5BEF; --rose: #F472B6; --alerte-fond: #FFF4D6; --alerte: #7A5200; --ok: #0F766E;
+  --aurore: linear-gradient(100deg, #A78BFA 0%, #F472B6 45%, #FB923C 100%); }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--fond); color: var(--texte);
+  line-height: 1.55; }
+a { color: var(--accent); }
+.barre { background: var(--nuit); color: #fff; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 12px 24px; flex-wrap: wrap; }
+.logo { display: flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; font-weight: 800; font-size: 1.1rem; }
+.barre nav { display: flex; gap: 18px; }
+.barre nav a { color: #C9CFE3; text-decoration: none; font-weight: 600; }
+.barre nav a:hover { color: #fff; }
+.contenu { max-width: 1240px; margin: 0 auto; padding: 32px 20px 48px; }
+.pied { text-align: center; color: var(--doux); font-size: .85rem; padding: 0 0 28px; }
+h1 { font-size: clamp(1.6rem, 3.4vw, 2.3rem); line-height: 1.2; margin: 0 0 10px; }
+.intro p { color: var(--doux); max-width: 62ch; margin: 0 0 22px; }
+.recherche { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.recherche input { flex: 1 1 320px; min-width: 0; padding: 14px 16px; border: 1px solid var(--bord); border-radius: 12px; font-size: 1rem; }
+input, select { font: inherit; }
+.carte input, .carte select { width: 100%; max-width: 460px; padding: 11px 14px; border: 1px solid var(--bord); border-radius: 10px; display: block; margin: 6px 0 4px; }
+.bouton { display: inline-block; background: var(--accent); color: #fff; border: 0; border-radius: 12px; padding: 13px 22px; font-weight: 700;
+  font-size: 1rem; cursor: pointer; text-decoration: none; }
+.bouton:hover { filter: brightness(1.08); }
+.bouton-discret { background: transparent; color: var(--doux); border: 1px solid var(--bord); padding: 9px 16px; font-weight: 600; font-size: .9rem; }
+.alerte { background: var(--alerte-fond); color: var(--alerte); padding: 12px 16px; border-radius: 12px; }
+.succes { background: #E7F7F3; color: var(--ok); padding: 12px 16px; border-radius: 12px; }
+.sous-titre { font-size: 1.15rem; margin: 26px 0 12px; }
+.candidats { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.candidat { display: grid; gap: 2px; background: var(--carte); border: 1px solid var(--bord); border-radius: 14px; padding: 14px 18px;
+  text-decoration: none; color: var(--texte); }
+.candidat:hover { border-color: var(--accent); box-shadow: 0 6px 20px rgba(109, 91, 239, .12); }
+.candidat span { color: var(--doux); font-size: .92rem; overflow-wrap: anywhere; }
+.details { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.etiquette { font-style: normal; font-size: .78rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: #EEF0F7; color: var(--doux); }
+.etiquette-ok { background: #E7F7F3; color: var(--ok); }
+.etiquette-alerte { background: var(--alerte-fond); color: var(--alerte); }
+.petit { font-size: .88rem; color: var(--doux); }
+.carte { background: var(--carte); border: 1px solid var(--bord); border-radius: 16px; padding: 22px; margin-bottom: 14px; }
+.carte h2 { font-size: 1.1rem; margin: 18px 0 4px; }
+.carte h2:first-child { margin-top: 0; }
+.visuellement-cache { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.entete-demo { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 18px; }
+.entete-demo p { margin: 0; color: var(--doux); }
+.apercus { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: start; }
+.ecran { margin: 0; }
+.ecran figcaption { font-weight: 700; font-size: .85rem; color: var(--doux); margin-bottom: 8px; }
+/* Ordinateur : la maquette est affichée en 1280 px de large, réduite pour tenir dans la colonne */
+.cadre-ordinateur { border: 1px solid var(--bord); border-radius: 14px; overflow: hidden; background: #fff; aspect-ratio: 16 / 10;
+  position: relative; }
+.cadre-ordinateur iframe { position: absolute; top: 0; left: 0; width: 1280px; border: 0; transform-origin: 0 0; }
+.cadre-telephone { width: 300px; height: 620px; border: 10px solid var(--nuit); border-radius: 36px; overflow: hidden; background: #fff;
+  position: relative; }
+.cadre-telephone iframe { position: absolute; top: 0; left: 0; width: 390px; border: 0; transform-origin: 0 0; }
+@media (max-width: 900px) {
+  .apercus { grid-template-columns: 1fr; }
+  .cadre-telephone { margin: 0 auto; }
+}

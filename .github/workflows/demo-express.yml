@@ -1,0 +1,32 @@
+# Démo Express : tests à chaque modification (les installateurs viendront à l'étape 4).
+name: Démo Express – tests
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "demo-express/**"
+      - ".github/workflows/demo-express.yml"
+
+jobs:
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: demo-express
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Dépendances
+        run: |
+          python -m pip install --upgrade pip
+          pip install --only-binary=cryptography,cffi cryptography cffi
+          pip install -e ".[dev]"
+      - name: Tests (faux Google Places)
+        run: pytest -q

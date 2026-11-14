@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="{{ langue }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titre %}Démo Express{% endblock %}</title>
+  <link rel="icon" href="/static/icone.svg">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="barre">
+    <a class="logo" href="/"><img src="/static/icone.svg" alt="" width="30" height="30">Démo Express</a>
+    <nav>
+      <a href="/">{{ _("Nouvelle démo") }}</a>
+      <a href="/reglages">{{ _("Réglages") }}</a>
+    </nav>
+  </header>
+  <main class="contenu">
+    {% block contenu %}{% endblock %}
+  </main>
+  <footer class="pied">Démo Express {{ version }} · by VORELIK</footer>
+</body>
+</html>

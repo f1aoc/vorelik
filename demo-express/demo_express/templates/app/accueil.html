@@ -1,0 +1,40 @@
+{% extends "app/base.html" %}
+{% block contenu %}
+  <section class="intro">
+    <h1>{{ _("Le futur site de votre prospect, en deux minutes") }}</h1>
+    <p>{{ _("Tapez le nom de l'entreprise et sa ville, ou collez son lien Google Maps : Démo Express fabrique une maquette à partir de sa fiche Google.") }}</p>
+  </section>
+
+  {% if sans_cle %}
+    <p class="alerte">{{ _("Ajoutez d'abord votre clé Google Places dans les") }} <a href="/reglages">{{ _("Réglages") }}</a>.</p>
+  {% endif %}
+
+  <form class="recherche" method="get" action="/">
+    <label for="q" class="visuellement-cache">{{ _("Entreprise") }}</label>
+    <input id="q" name="q" value="{{ q }}" autofocus required
+           placeholder="{{ _('Ex. : Boulangerie Martin Lyon, ou lien Google Maps') }}">
+    <button class="bouton" type="submit">{{ _("Rechercher") }}</button>
+  </form>
+
+  {% if erreur %}<p class="alerte">{{ erreur }}</p>{% endif %}
+
+  {% if candidats %}
+    <h2 class="sous-titre">{{ _("Choisissez l'entreprise") }}</h2>
+    <ul class="candidats">
+      {% for c in candidats %}
+        <li>
+          <a class="candidat" href="/demo/{{ c.id }}">
+            <strong>{{ c.nom }}</strong>
+            <span>{{ c.metier }}{% if c.metier and c.adresse %} · {% endif %}{{ c.adresse }}</span>
+            <span class="details">
+              {% if c.note %}★ {{ c.note }} ({{ c.nombre_avis }}){% endif %}
+              {% if c.fermee %}<em class="etiquette etiquette-alerte">{{ _("Fermée") }}</em>
+              {% elif c.site %}<em class="etiquette">{{ _("A déjà un site") }}</em>
+              {% else %}<em class="etiquette etiquette-ok">{{ _("Sans site") }}</em>{% endif %}
+            </span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endblock %}

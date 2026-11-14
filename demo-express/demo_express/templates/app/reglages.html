@@ -1,0 +1,25 @@
+{% extends "app/base.html" %}
+{% block titre %}{{ _("Réglages") }} · Démo Express{% endblock %}
+{% block contenu %}
+  <h1>{{ _("Réglages") }}</h1>
+  {% if enregistre %}<p class="succes">{{ _("Réglages enregistrés.") }}</p>{% endif %}
+  <form class="carte" method="post" action="/reglages">
+    <h2>{{ _("Clé Google Places") }}</h2>
+    <p class="petit">{{ _("Votre propre clé, avec « Places API (New) » activée dans Google Cloud. Elle est enregistrée chiffrée sur cet ordinateur.") }}</p>
+    {% if cle_masquee %}<p>{{ _("Clé actuelle") }} : <code>{{ cle_masquee }}</code></p>{% endif %}
+    <label for="cle_google">{{ cle_masquee and _("Remplacer la clé") or _("Votre clé") }}</label>
+    <input id="cle_google" name="cle_google" type="password" autocomplete="off" placeholder="AIza…">
+
+    <h2>{{ _("Langue") }}</h2>
+    <p class="petit">{{ _("Langue de l'application et des maquettes.") }}</p>
+    <select name="langue" aria-label="{{ _('Langue') }}">
+      <option value="{{ auto }}" {% if choix == auto %}selected{% endif %}>{{ _("Langue de l'ordinateur") }}</option>
+      <option value="fr" {% if choix == "fr" %}selected{% endif %}>Français</option>
+      <option value="en" {% if choix == "en" %}selected{% endif %}>English</option>
+    </select>
+    <p><button class="bouton" type="submit">{{ _("Enregistrer") }}</button></p>
+  </form>
+  {% if cle_masquee %}
+    <form method="post" action="/reglages/oublier-cle"><button class="bouton bouton-discret" type="submit">{{ _("Supprimer la clé de cet ordinateur") }}</button></form>
+  {% endif %}
+{% endblock %}
