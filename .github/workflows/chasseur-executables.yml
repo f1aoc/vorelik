@@ -2,7 +2,7 @@
 #   Windows : ChasseurDeSites.exe (un seul fichier, double-clic, sans console)
 #   macOS   : ChasseurDeSites-mac-apple-silicon.zip / ChasseurDeSites-mac-intel.zip (application .app)
 # et les publie dans la release « chasseurdesites-latest » (liens permanents, sans compte GitHub) :
-#   https://github.com/f1aoc/coiffeur-sept26/releases/download/chasseurdesites-latest/ChasseurDeSites.exe
+#   https://github.com/f1aoc/vorelik/releases/download/chasseurdesites-latest/ChasseurDeSites.exe
 name: Chasseur de sites – exécutables
 
 on:

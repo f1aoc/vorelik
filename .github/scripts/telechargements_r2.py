@@ -18,13 +18,13 @@ SERVEUR = "https://licences.patrick-tabountchikoff.workers.dev/telecharger"
 FICHIERS = [f"{nom}{fin}" for nom, win in (("BridgeToLeads", ".exe"), ("ChasseurDeSites", ".exe"), ("AuditExpress", "-Windows.zip"))
             for fin in (win, "-mac-apple-silicon.zip", "-mac-intel.zip")]
 GITHUB = [
-    ("https://github.com/f1aoc/coiffeur-sept26/releases/download/chasseurdesites-latest/", SERVEUR + "/"),
-    ("https://github.com/f1aoc/coiffeur-sept26/releases/download/bridgetoleads-latest/", SERVEUR + "/"),
+    ("https://github.com/f1aoc/vorelik/releases/download/chasseurdesites-latest/", SERVEUR + "/"),
+    ("https://github.com/f1aoc/vorelik/releases/download/bridgetoleads-latest/", SERVEUR + "/"),
     ("https://github.com/f1aoc/audit_express/releases/download/auditexpress-latest/", SERVEUR + "/"),
     # pages Merci : constante + chemin construits dans le script
     ("${TELECHARGEMENTS}/chasseurdesites-latest/", "${TELECHARGEMENTS}/"),
     ("${TELECHARGEMENTS}/bridgetoleads-latest/", "${TELECHARGEMENTS}/"),
-    ('"https://github.com/f1aoc/coiffeur-sept26/releases/download"', f'"{SERVEUR}"'),
+    ('"https://github.com/f1aoc/vorelik/releases/download"', f'"{SERVEUR}"'),
     ('"https://github.com/f1aoc/audit_express/releases/download/auditexpress-latest/AuditExpress"', f'"{SERVEUR}/AuditExpress"'),
 ]
 

@@ -6,7 +6,7 @@ la page de vente de chacun.
 ## Mettre en ligne (le plus simple)
 
 GitHub assemble automatiquement le site complet : téléchargez **ptabountchikoff-site-complet.zip** dans la release
-[chasseurdesites-latest](https://github.com/f1aoc/coiffeur-sept26/releases/tag/chasseurdesites-latest),
+[chasseurdesites-latest](https://github.com/f1aoc/vorelik/releases/tag/chasseurdesites-latest),
 décompressez-le et envoyez tout le dossier sur votre hébergeur (Netlify, Vercel, GitHub Pages, FTP…).
 
 ```

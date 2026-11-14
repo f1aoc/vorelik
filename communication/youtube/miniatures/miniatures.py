@@ -4,7 +4,7 @@ Chaque miniature = une entrée de MINIATURES : logiciel (couleurs + icône + cap
 import sys
 from pathlib import Path
 
-R = Path("/home/user/coiffeur-sept26")
+R = Path(__file__).resolve().parents[3]  # racine du dépôt
 A = R / "vitrine/assets"
 LOGICIELS = {
     "btl": dict(nom={"fr": "BridgeToLeads", "en": "BridgeToLeads"}, icone=A / "bridgetoleads-icone.png",

@@ -98,7 +98,7 @@ Une clé à part, utilisée seulement par le serveur de l'essai. Vous pourrez la
    1. menu de gauche → **Workers & Pages** → **Create** → **Create Worker** (ou **Start with Hello World!**).
       **Worker name** : `essai-bridgetoleads` → **Deploy** ;
    2. bouton **Edit code** : effacez tout, puis collez le contenu de
-      [`worker.js`](https://raw.githubusercontent.com/f1aoc/coiffeur-sept26/claude/kind-volta-486eo6/essai-bridgetoleads/worker.js)
+      [`worker.js`](https://raw.githubusercontent.com/f1aoc/vorelik/claude/kind-volta-486eo6/essai-bridgetoleads/worker.js)
       (ouvrez le lien, **Ctrl+A**, **Ctrl+C**, revenez dans l'éditeur, **Ctrl+V**) ;
    3. cliquez sur **Deploy** en haut à droite.
 3. **Lier la mémoire** : page du Worker → onglet **Settings** → **Bindings** → **+ Add** → **KV namespace**.

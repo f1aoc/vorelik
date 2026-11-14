@@ -16,9 +16,9 @@ Trois possibilités ; choisissez-en **une**.
 ### A. Exécutable (le plus simple, Windows ou macOS)
 
 1. Téléchargez la dernière version (liens permanents, sans compte GitHub) :
-   - Windows : [ChasseurDeSites.exe](https://github.com/f1aoc/coiffeur-sept26/releases/download/chasseurdesites-latest/ChasseurDeSites.exe)
-   - Mac M1 à M4 : [ChasseurDeSites-mac-apple-silicon.zip](https://github.com/f1aoc/coiffeur-sept26/releases/download/chasseurdesites-latest/ChasseurDeSites-mac-apple-silicon.zip)
-   - Mac Intel : [ChasseurDeSites-mac-intel.zip](https://github.com/f1aoc/coiffeur-sept26/releases/download/chasseurdesites-latest/ChasseurDeSites-mac-intel.zip)
+   - Windows : [ChasseurDeSites.exe](https://github.com/f1aoc/vorelik/releases/download/chasseurdesites-latest/ChasseurDeSites.exe)
+   - Mac M1 à M4 : [ChasseurDeSites-mac-apple-silicon.zip](https://github.com/f1aoc/vorelik/releases/download/chasseurdesites-latest/ChasseurDeSites-mac-apple-silicon.zip)
+   - Mac Intel : [ChasseurDeSites-mac-intel.zip](https://github.com/f1aoc/vorelik/releases/download/chasseurdesites-latest/ChasseurDeSites-mac-intel.zip)
 
    (Onglet **Releases** du dépôt → « Chasseur de sites by ptabountchikoff » ; chaque modification du dossier
    `chasseur-de-sites` la met à jour automatiquement.)

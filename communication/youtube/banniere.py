@@ -1,7 +1,7 @@
 """Bannière YouTube VORELIK 2560 × 1440 (zone visible partout : 1546 × 423 au centre)."""
 import sys
 from pathlib import Path
-R = Path("/home/user/coiffeur-sept26")
+R = Path(__file__).resolve().parents[2]  # racine du dépôt
 A = R / "vitrine/assets"
 TEXTES = {
     "fr": dict(l1="Des logiciels qui trouvent", l2="vos prochains clients.",

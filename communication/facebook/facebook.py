@@ -2,7 +2,7 @@
 import sys
 from pathlib import Path
 
-R = Path("/home/user/coiffeur-sept26")
+R = Path(__file__).resolve().parents[2]  # racine du dépôt
 A = R / "vitrine/assets"
 EN = R / "vitrine-en"
 POLICE = A / "polices/polices.css"

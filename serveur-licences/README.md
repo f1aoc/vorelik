@@ -96,7 +96,7 @@ Si un jour Stripe refuse un appel, son message d'erreur indique la permission ma
    (ou **Start with Hello World!**).
 3. **Worker name** : `licences` → bouton **Deploy**.
 4. Bouton **Edit code**. Effacez tout le code affiché, puis collez celui de
-   [`worker.js`](https://raw.githubusercontent.com/f1aoc/coiffeur-sept26/claude/kind-volta-486eo6/serveur-licences/worker.js)
+   [`worker.js`](https://raw.githubusercontent.com/f1aoc/vorelik/claude/kind-volta-486eo6/serveur-licences/worker.js)
    (ouvrez le lien, **Ctrl+A**, **Ctrl+C**, revenez dans l'éditeur, **Ctrl+V**). Bouton **Deploy** en haut à droite.
 5. Revenez à la page du Worker → onglet **Settings** → section **Variables and Secrets** → bouton **+ Add**.
    Ajoutez ces 4 variables une par une (**Type**, **Variable name**, **Value**), puis **Deploy** :
