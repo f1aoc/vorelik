@@ -2,26 +2,33 @@
 
   /                 recherche de l'entreprise (nom + ville, ou lien Google Maps)
   /demo/{id}        retouches et aperçu de la maquette, ordinateur et téléphone côte à côte
-  /maquette/{id}    la maquette elle-même
+  /demo/{id}/envoyer  envoi au prospect : maquette d'export (sans contenu Google), fichiers, message
+  /maquette/{id}    la maquette elle-même (?export=1 : version d'export)
   /photo            photos de la fiche, relayées depuis Google avec la clé du client
-  /reglages         clé Google Places et langue
+  /reglages         clé Google Places, signature du vendeur et langue
 
-Les fiches et photos Google restent en mémoire (le temps de la session), jamais sur le disque.
+Les fiches et photos Google restent en mémoire (le temps de la session), jamais sur le disque ni dans un export.
 """
 
 from __future__ import annotations
 
+import hashlib
+import io
+import re
+import unicodedata
+import zipfile
 from collections import OrderedDict
 from pathlib import Path
+from typing import Awaitable, Callable
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from demo_express import __version__, maquette, places
+from demo_express import __version__, capture, maquette, messages, places
 from demo_express.familles import FAMILLES
 from demo_express.langue import AUTO, _, langue_courante
 from demo_express.reglages import Reglages
@@ -46,7 +53,11 @@ class Memoire(OrderedDict):
         return valeur
 
 
-def creer_app(reglages: Reglages, hotes: list[str] | None = None) -> FastAPI:
+Capturer = Callable[[str, Path], Awaitable[capture.Captures]]
+
+
+def creer_app(reglages: Reglages, hotes: list[str] | None = None, capturer: Capturer | None = None) -> FastAPI:
+    capturer = capturer or capture.capturer
     app = FastAPI(title="Démo Express", docs_url=None, redoc_url=None, openapi_url=None)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=hotes or HOTES)
     app.mount("/static", StaticFiles(directory=DOSSIER / "static"), name="static")
@@ -55,6 +66,8 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None) -> FastAPI:
     fiches: Memoire = Memoire(30)
     retouches: dict[str, maquette.Options] = {}  # par entreprise, le temps de la session
     images: Memoire = Memoire(120)
+    identites: dict[str, maquette.Identite] = {}  # vérifiées par le vendeur, pour l'export
+    exports: Memoire = Memoire(5)  # (entreprise, empreinte de la maquette) → Captures
 
     def page(nom: str, request: Request, statut: int = 200, **valeurs) -> HTMLResponse:
         html = env.get_template(f"app/{nom}.html").render(request=request, langue=langue_courante(), **valeurs)
@@ -129,12 +142,102 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None) -> FastAPI:
         return RedirectResponse(f"/demo/{place_id}", status_code=303)
 
     @app.get("/maquette/{place_id}", response_class=HTMLResponse)
-    async def maquette_html(place_id: str):
+    async def maquette_html(place_id: str, export: int = 0):
         try:
             fiche = await fiche_de(place_id)
         except places.ErreurPlaces as e:
             return HTMLResponse(f"<p style='font-family:sans-serif;padding:24px'>{e}</p>", status_code=502)
+        if export:
+            return HTMLResponse(html_export(place_id), headers={"Cache-Control": "no-store"})
         return HTMLResponse(maquette.rendre(fiche, retouches.get(place_id)), headers={"Cache-Control": "no-store"})
+
+    # --- Envoi au prospect (B : fichiers sans contenu Google, C : message) ------------------------------------
+
+    def identite_de(place_id: str) -> maquette.Identite:
+        if place_id not in identites:
+            f = fiches[place_id]
+            identites[place_id] = maquette.Identite(f.nom, f.metier, f.ville, f.telephone).nettoyer()
+        return identites[place_id]
+
+    def html_export(place_id: str) -> str:
+        return maquette.rendre(fiches[place_id], retouches.get(place_id), identite=identite_de(place_id))
+
+    def message_de(place_id: str) -> messages.Message:
+        fiche, identite = fiches[place_id], identite_de(place_id)
+        ctx = maquette.contexte(fiche, retouches.get(place_id), identite=identite)
+        return messages.rediger(identite.nom, identite.ville, ctx["famille"], ctx["action"], bool(fiche.site), reglages.vendeur)
+
+    def nom_de_fichier(place_id: str) -> str:
+        texte = unicodedata.normalize("NFKD", identite_de(place_id).nom).encode("ascii", "ignore").decode().lower()
+        return "maquette-" + (re.sub(r"[^a-z0-9]+", "-", texte).strip("-")[:50] or "site")
+
+    @app.get("/demo/{place_id}/envoyer", response_class=HTMLResponse)
+    async def envoyer(request: Request, place_id: str):
+        try:
+            await fiche_de(place_id)
+        except places.ErreurPlaces as e:
+            return page("accueil", request, statut=502, q="", candidats=[], erreur=str(e), sans_cle=not cle())
+        return page("envoyer", request, fiche=fiches[place_id], identite=identite_de(place_id), message=message_de(place_id),
+                    vendeur=reglages.vendeur, navigateur_pret=capture.chromium_installe(reglages.dossier))
+
+    @app.post("/demo/{place_id}/identite")
+    async def enregistrer_identite(request: Request, place_id: str):
+        if not meme_origine(request):
+            return Response(status_code=403)
+        if place_id not in fiches:
+            return Response(status_code=404)
+        f = await request.form()
+        identite = maquette.Identite(f.get("nom", ""), f.get("metier", ""), f.get("ville", ""), f.get("telephone", "")).nettoyer()
+        if not identite.nom:
+            return JSONResponse({"erreur": _("Indiquez le nom de l'entreprise.")}, status_code=400)
+        identites[place_id] = identite
+        m = message_de(place_id)
+        return JSONResponse({"objet": m.objet, "corps": m.corps, "sms": m.sms, "lien_mail": m.lien_mail})
+
+    @app.post("/demo/{place_id}/preparer")
+    async def preparer(request: Request, place_id: str):
+        """Images et PDF de la maquette d'export (le navigateur intégré est téléchargé au premier usage)."""
+        if not meme_origine(request):
+            return Response(status_code=403)
+        if place_id not in fiches:
+            return Response(status_code=404)
+        html = html_export(place_id)
+        cle_export = (place_id, hashlib.sha256(html.encode()).hexdigest())
+        if cle_export not in exports:
+            try:
+                exports.garder(cle_export, await capturer(html, reglages.dossier))
+            except capture.ErreurCapture as e:
+                return JSONResponse({"erreur": str(e)}, status_code=503)
+        return JSONResponse({"pret": True})
+
+    @app.get("/demo/{place_id}/fichier/{format}")
+    async def fichier(place_id: str, format: str):
+        if place_id not in fiches:
+            return Response(status_code=404)
+        html = html_export(place_id)
+        nom = nom_de_fichier(place_id)
+        if format == "html":
+            return telechargement(html.encode("utf-8"), f"{nom}.html", "text/html; charset=utf-8")
+        captures = exports.get((place_id, hashlib.sha256(html.encode()).hexdigest()))
+        if captures is None:
+            return Response(_("Préparez d'abord les fichiers."), status_code=409)
+        if format == "ordinateur.png":
+            return telechargement(captures.ordinateur, f"{nom}-ordinateur.png", "image/png")
+        if format == "telephone.png":
+            return telechargement(captures.telephone, f"{nom}-telephone.png", "image/png")
+        if format == "pdf":
+            return telechargement(captures.pdf, f"{nom}.pdf", "application/pdf")
+        if format == "zip":
+            m = message_de(place_id)
+            tampon = io.BytesIO()
+            with zipfile.ZipFile(tampon, "w", zipfile.ZIP_DEFLATED) as z:
+                z.writestr(f"{nom}.pdf", captures.pdf)
+                z.writestr(f"{nom}-ordinateur.png", captures.ordinateur)
+                z.writestr(f"{nom}-telephone.png", captures.telephone)
+                z.writestr(f"{nom}.html", html)
+                z.writestr("message.txt", f"{m.objet}\n\n{m.corps}\n\n---\nSMS :\n{m.sms}\n")
+            return telechargement(tampon.getvalue(), f"{nom}.zip", "application/zip")
+        return Response(status_code=404)
 
     @app.get("/photo")
     async def photo(nom: str, largeur: int = 1600):
@@ -150,14 +253,17 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None) -> FastAPI:
     @app.get("/reglages", response_class=HTMLResponse)
     async def reglages_page(request: Request, enregistre: int = 0):
         return page("reglages", request, cle_masquee=masquer(cle()) if cle() else "", choix=reglages.langue,
-                    enregistre=bool(enregistre), auto=AUTO)
+                    enregistre=bool(enregistre), auto=AUTO, vendeur=reglages.vendeur)
 
     @app.post("/reglages")
-    async def reglages_enregistrer(request: Request, cle_google: str = Form(""), langue: str = Form(AUTO)):
+    async def reglages_enregistrer(request: Request, cle_google: str = Form(""), langue: str = Form(AUTO),
+                                   vendeur_nom: str = Form(""), vendeur_agence: str = Form(""),
+                                   vendeur_telephone: str = Form(""), vendeur_email: str = Form("")):
         if not meme_origine(request):
             return Response(status_code=403)
         if cle_google.strip():
             reglages.enregistrer_cle(places_cle_propre(cle_google))
+        reglages.enregistrer_vendeur(vendeur_nom, vendeur_agence, vendeur_telephone, vendeur_email)
         reglages.enregistrer_langue(langue)
         fiches.clear()  # textes Google dans la nouvelle langue
         return RedirectResponse("/reglages?enregistre=1", status_code=303)
@@ -170,6 +276,11 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None) -> FastAPI:
         return RedirectResponse("/reglages?enregistre=1", status_code=303)
 
     return app
+
+
+def telechargement(contenu: bytes, nom: str, type_mime: str) -> Response:
+    return Response(contenu, media_type=type_mime, headers={"Content-Disposition": f'attachment; filename="{nom}"',
+                                                            "Cache-Control": "no-store"})
 
 
 NOMS_SECTIONS = {

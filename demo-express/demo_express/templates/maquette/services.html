@@ -15,7 +15,7 @@
   .atouts li { background: rgba(255,255,255,.12); color: #fff; padding: 6px 14px; border-radius: 999px; font-size: .88rem; }
   .atouts li::before { color: #fff; }
   .carte-inclinee { position: relative; margin: 0; transform: rotate(2deg); }
-  .carte-inclinee img { border-radius: var(--rayon); aspect-ratio: 4 / 3; object-fit: cover; width: 100%; box-shadow: 0 40px 80px -30px rgba(0,0,0,.6); }
+  .carte-inclinee .photo { border-radius: var(--rayon); aspect-ratio: 4 / 3; object-fit: cover; width: 100%; box-shadow: 0 40px 80px -30px rgba(0,0,0,.6); }
   .service { transition: transform .2s; }
   .service:hover { transform: translateY(-4px); }
   @media (max-width: 820px) { .heros .conteneur { grid-template-columns: 1fr; } .carte-inclinee { transform: none; } }
@@ -37,12 +37,12 @@
         <p class="accroche">{{ accroche }}</p>
         {{ m.boutons() }}
         <ul class="atouts">{% for a in atouts %}<li>{{ a }}</li>{% endfor %}</ul>
-        {{ m.note_google() }}
+        {{ m.note_google(true) }}
       </div>
       {% if photos %}
         <figure class="carte-inclinee">
-          <img src="{{ url_photo(photos[0].nom, 1400) }}" alt="{{ fiche.nom }}">
-          {% if photos[0].auteurs %}<span class="credit-photo">{{ t.photo_de.format(auteur=photos[0].auteurs[0][0]) }}</span>{% endif %}
+          {{ m.image(photos[0], 1400, fiche.nom) }}
+          {{ m.credit_photo(photos[0]) }}
         </figure>
       {% endif %}
     </div>

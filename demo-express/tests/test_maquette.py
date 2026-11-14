@@ -33,8 +33,8 @@ def test_maquette_d_une_boulangerie():
     assert "Le goût du fait maison" in html  # famille « commerces de bouche »
     assert "Chez Boulangerie Martin, à Lyon" in html
     assert 'href="tel:+33478000000"' in html
-    # Attributions Google : auteurs des photos et des avis, mention générale
-    assert "Photo : Auteur 0" in html and "Avis Google de Julie R." in html and "Photos et avis : Google" in html
+    # Crédits Google (vérifiés en détail dans test_conformite.py)
+    assert "Auteur 0" in html and "Julie R." in html and 'translate="no">Google Maps</span>' in html
     assert "/photo?nom=places%2F" in html
     assert "lundi: 07:00–19:30" in html
 
@@ -46,10 +46,9 @@ def test_maquette_en_anglais(monkeypatch):
 
 
 def test_contenu_google_echappe():
-    piege = fiche_google(displayName={"text": "<script>alert(1)</script>"}, editorialSummary={"text": "Prix {nom} {0} <b>"})
+    piege = fiche_google(displayName={"text": "<script>alert(1)</script>{0}{nom}"})
     html = maquette.rendre(places.vers_fiche(piege))
-    assert "<script>alert(1)</script>" not in html and "&lt;script&gt;" in html
-    assert "Prix {nom} {0} &lt;b&gt;" in html  # le résumé Google n'est pas un modèle
+    assert "<script>alert(1)</script>" not in html and "&lt;script&gt;alert(1)&lt;/script&gt;{0}{nom}" in html
 
 
 def test_fiche_sans_photo_ni_avis_ni_horaires():

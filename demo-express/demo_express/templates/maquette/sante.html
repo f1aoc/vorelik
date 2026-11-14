@@ -11,7 +11,7 @@
   .heros .accroche { color: var(--doux); }
   .atouts { flex-direction: column; gap: 8px; }
   .carte-photo { position: relative; margin: 0; }
-  .carte-photo img { border-radius: var(--rayon); aspect-ratio: 5 / 4; object-fit: cover; width: 100%; box-shadow: 0 30px 60px -30px rgba(11,42,40,.45); }
+  .carte-photo .photo { border-radius: var(--rayon); aspect-ratio: 5 / 4; object-fit: cover; width: 100%; box-shadow: 0 30px 60px -30px rgba(11,42,40,.45); }
   .carte-photo::before { content: ""; position: absolute; inset: 18px -18px -18px 18px; background: var(--clair); border-radius: var(--rayon); z-index: -1; }
   .service { box-shadow: 0 10px 30px -18px rgba(11,42,40,.35); border: 0; }
   .numero { color: var(--couleur); }
@@ -30,8 +30,8 @@
       </div>
       {% if photos %}
         <figure class="carte-photo">
-          <img src="{{ url_photo(photos[0].nom, 1400) }}" alt="{{ fiche.nom }}">
-          {% if photos[0].auteurs %}<span class="credit-photo">{{ t.photo_de.format(auteur=photos[0].auteurs[0][0]) }}</span>{% endif %}
+          {{ m.image(photos[0], 1400, fiche.nom) }}
+          {{ m.credit_photo(photos[0]) }}
         </figure>
       {% endif %}
     </div>

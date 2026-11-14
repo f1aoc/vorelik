@@ -26,8 +26,7 @@ CHAMPS_RECHERCHE = [
 CHAMPS_FICHE = [
     "id", "displayName", "formattedAddress", "shortFormattedAddress", "addressComponents", "nationalPhoneNumber",
     "internationalPhoneNumber", "regularOpeningHours.weekdayDescriptions", "rating", "userRatingCount", "reviews",
-    "photos", "primaryType", "primaryTypeDisplayName", "types", "googleMapsUri", "websiteUri", "editorialSummary",
-    "businessStatus",
+    "photos", "primaryType", "primaryTypeDisplayName", "types", "googleMapsUri", "websiteUri", "businessStatus",
 ]
 MAX_PHOTOS = 10
 MAX_AVIS = 5
@@ -58,12 +57,22 @@ class Candidat:
 
 
 @dataclass
+class Auteur:
+    """Auteur d'une photo ou d'un avis, à créditer (règles Google : avatar, nom et lien du profil)."""
+    nom: str
+    lien: str = ""
+    avatar: str = ""
+
+
+@dataclass
 class Avis:
-    auteur: str
-    lien_auteur: str
+    auteur: Auteur
     note: int
     texte: str
-    quand: str
+    quand: str  # date relative fournie par Google (« il y a une semaine »)
+    lien_google: str = ""  # l'avis sur Google Maps
+    visite: tuple[int, int] | None = None  # (année, mois) de la visite : à afficher pour les lieux en France
+    traduit: bool = False
 
 
 @dataclass
@@ -71,7 +80,8 @@ class Photo:
     nom: str  # identifiant Google de la photo (places/…/photos/…)
     largeur: int
     hauteur: int
-    auteurs: list[tuple[str, str]] = field(default_factory=list)  # (nom, lien) à créditer
+    auteurs: list[Auteur] = field(default_factory=list)
+    lien_google: str = ""  # la photo sur Google Maps
 
 
 @dataclass
@@ -93,7 +103,7 @@ class Fiche:
     metier: str
     lien_maps: str
     site: str
-    resume: str
+    pays: str = ""  # code pays (FR…), d'après l'adresse
 
 
 def langue_api() -> dict:
@@ -202,23 +212,42 @@ def _ville(composants: list[dict], adresse: str) -> str:
     return ""
 
 
+def _auteur(a: dict) -> Auteur:
+    return Auteur(nom=a.get("displayName", ""), lien=a.get("uri", ""), avatar=a.get("photoUri", ""))
+
+
+def _pays(composants: list[dict]) -> str:
+    for c in composants or []:
+        if "country" in c.get("types", []):
+            return (c.get("shortText") or "").upper()
+    return ""
+
+
+def _visite(a: dict) -> tuple[int, int] | None:
+    v = a.get("visitDate") or {}
+    return (int(v["year"]), int(v["month"])) if v.get("year") and v.get("month") else None
+
+
 def vers_fiche(p: dict) -> Fiche:
-    avis = [
-        Avis(
-            auteur=a.get("authorAttribution", {}).get("displayName", ""),
-            lien_auteur=a.get("authorAttribution", {}).get("uri", ""),
+    avis = []
+    for a in p.get("reviews", []):
+        texte, original = a.get("text") or {}, a.get("originalText") or {}
+        avis.append(Avis(
+            auteur=_auteur(a.get("authorAttribution", {})),
             note=int(a.get("rating") or 0),
-            texte=(a.get("text") or a.get("originalText") or {}).get("text", "").strip(),
+            texte=(texte or original).get("text", "").strip(),
             quand=a.get("relativePublishTimeDescription", ""),
-        )
-        for a in p.get("reviews", [])
-    ]
+            lien_google=a.get("googleMapsUri", ""),
+            visite=_visite(a),
+            traduit=bool(texte and original and texte.get("languageCode") != original.get("languageCode")),
+        ))
     photos = [
         Photo(
             nom=ph["name"],
             largeur=int(ph.get("widthPx") or 0),
             hauteur=int(ph.get("heightPx") or 0),
-            auteurs=[(x.get("displayName", ""), x.get("uri", "")) for x in ph.get("authorAttributions", [])],
+            auteurs=[_auteur(x) for x in ph.get("authorAttributions", [])],
+            lien_google=ph.get("googleMapsUri", ""),
         )
         for ph in p.get("photos", [])
         if ph.get("name")
@@ -235,15 +264,15 @@ def vers_fiche(p: dict) -> Fiche:
         horaires=p.get("regularOpeningHours", {}).get("weekdayDescriptions", []),
         note=p.get("rating"),
         nombre_avis=int(p.get("userRatingCount") or 0),
-        # Les avis les mieux notés et les plus fournis d'abord
-        avis=sorted((a for a in avis if a.texte), key=lambda a: (-a.note, -len(a.texte)))[:MAX_AVIS],
+        # Ordre de Google (pertinence), avis avec commentaire seulement : la maquette l'indique (règles Google)
+        avis=[a for a in avis if a.texte][:MAX_AVIS],
         photos=photos[:MAX_PHOTOS],
         type_principal=p.get("primaryType", ""),
         types=p.get("types", []),
         metier=p.get("primaryTypeDisplayName", {}).get("text", ""),
         lien_maps=p.get("googleMapsUri", ""),
         site=p.get("websiteUri", ""),
-        resume=p.get("editorialSummary", {}).get("text", ""),
+        pays=_pays(p.get("addressComponents", [])),
     )
 
 

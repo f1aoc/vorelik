@@ -26,7 +26,9 @@ def test_chaque_modele_a_sa_mise_en_page(code):
     # Ordre des sections propre au modèle
     positions = [page.index(f'id="{s.replace("_", "-")}"') for s in maquette.ORDRES[code]]
     assert positions == sorted(positions)
-    assert "Maquette de démonstration" in page and "Photos et avis : Google" in page
+    assert "Maquette de démonstration" in page and 'translate="no">Google Maps</span>' in page
+    export = maquette.rendre(fiche(), maquette.Options(modele=code), identite=maquette.Identite("Boulangerie Martin", "Boulangerie", "Lyon", "04 78 00 00 00"))
+    assert f'class="modele-{code}"' in export and MARQUES[code] in export and "Vos photos ici" in export
 
 
 def test_couleur_inseree_dans_le_css_uniquement_si_valide():

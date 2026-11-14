@@ -1,0 +1,106 @@
+{% extends "app/base.html" %}
+{% block titre %}{{ _("Envoyer") }} · {{ fiche.nom }} · Démo Express{% endblock %}
+{% block contenu %}
+  <p class="fil"><a href="/demo/{{ fiche.id }}">← {{ _("Retour aux retouches") }}</a></p>
+  <h1>{{ _("Envoyer la maquette à") }} {{ fiche.nom }}</h1>
+  <p class="alerte">{{ _("Les règles de Google interdisent de copier ses photos, avis, notes et horaires hors de l'application. Les fichiers envoyés au prospect les remplacent donc par des emplacements « Vos photos ici ». Pour montrer les vraies photos, présentez l'aperçu en rendez-vous ou en partage d'écran.") }}</p>
+
+  <div class="envoi">
+    <div class="envoi-gauche">
+      <form class="carte" id="identite" autocomplete="off">
+        <h2>1. {{ _("Vérifiez les informations") }}</h2>
+        <p class="petit">{{ _("Seules ces informations, vos textes et vos couleurs figurent dans les fichiers.") }}</p>
+        <label for="nom">{{ _("Nom de l'entreprise") }}</label><input id="nom" name="nom" value="{{ identite.nom }}" required maxlength="80">
+        <label for="metier">{{ _("Métier") }}</label><input id="metier" name="metier" value="{{ identite.metier }}" maxlength="80">
+        <label for="ville">{{ _("Ville") }}</label><input id="ville" name="ville" value="{{ identite.ville }}" maxlength="80">
+        <label for="telephone">{{ _("Téléphone") }}</label><input id="telephone" name="telephone" value="{{ identite.telephone }}" maxlength="30">
+        <p class="etat-enregistrement" id="etat-identite" aria-live="polite"></p>
+      </form>
+
+      <section class="carte">
+        <h2>2. {{ _("Fabriquez les fichiers") }}</h2>
+        <p class="petit">{% if navigateur_pret %}{{ _("Quelques secondes.") }}{% else %}{{ _("La première fois, le navigateur intégré est téléchargé (environ 150 Mo, une à deux minutes). Ensuite, quelques secondes.") }}{% endif %}</p>
+        <button class="bouton" type="button" id="preparer">{{ _("Préparer les fichiers") }}</button>
+        <p class="etat-enregistrement" id="etat-fichiers" aria-live="polite"></p>
+        <ul class="fichiers" id="fichiers" hidden>
+          <li><a class="bouton" href="/demo/{{ fiche.id }}/fichier/zip">{{ _("Tout télécharger (ZIP)") }}</a></li>
+          <li><a href="/demo/{{ fiche.id }}/fichier/pdf">PDF</a></li>
+          <li><a href="/demo/{{ fiche.id }}/fichier/ordinateur.png">{{ _("Image ordinateur") }}</a></li>
+          <li><a href="/demo/{{ fiche.id }}/fichier/telephone.png">{{ _("Image téléphone") }}</a></li>
+          <li><a href="/demo/{{ fiche.id }}/fichier/html">{{ _("Page web") }}</a></li>
+        </ul>
+      </section>
+
+      <section class="carte">
+        <h2>3. {{ _("Envoyez le message") }}</h2>
+        {% if not (vendeur.nom or vendeur.agence) %}<p class="petit">{{ _("Ajoutez votre nom et votre agence dans les") }} <a href="/reglages">{{ _("Réglages") }}</a> {{ _("pour signer le message.") }}</p>{% endif %}
+        <label for="objet">{{ _("Objet") }}</label>
+        <div class="copie"><input id="objet" value="{{ message.objet }}" readonly><button type="button" class="bouton bouton-discret" data-copier="objet">{{ _("Copier") }}</button></div>
+        <label for="corps">{{ _("E-mail") }}</label>
+        <textarea id="corps" rows="14" readonly>{{ message.corps }}</textarea>
+        <p class="boutons-message">
+          <button type="button" class="bouton bouton-discret" data-copier="corps">{{ _("Copier l'e-mail") }}</button>
+          <a class="bouton bouton-discret" id="lien-mail" href="{{ message.lien_mail }}">{{ _("Ouvrir dans ma messagerie") }}</a>
+        </p>
+        <p class="petit">{{ _("Pensez à joindre le PDF ou les images.") }}</p>
+        <label for="sms">{{ _("SMS") }}</label>
+        <textarea id="sms" rows="4" readonly>{{ message.sms }}</textarea>
+        <p><button type="button" class="bouton bouton-discret" data-copier="sms">{{ _("Copier le SMS") }}</button></p>
+      </section>
+    </div>
+
+    <figure class="ecran envoi-apercu">
+      <figcaption>{{ _("Ce que reçoit le prospect") }}</figcaption>
+      <div class="cadre-ordinateur"><iframe src="/maquette/{{ fiche.id }}?export=1" title="{{ _('Aperçu de la maquette envoyée') }}"></iframe></div>
+    </figure>
+  </div>
+
+  <script>
+    const cadre = document.querySelector(".cadre-ordinateur");
+    const iframe = cadre.querySelector("iframe");
+    const ajuster = () => { const e = cadre.clientWidth / 1280; iframe.style.height = `${cadre.clientHeight / e}px`; iframe.style.transform = `scale(${e})`; };
+    new ResizeObserver(ajuster).observe(cadre); ajuster();
+
+    const formulaire = document.getElementById("identite");
+    const etatIdentite = document.getElementById("etat-identite");
+    const fichiers = document.getElementById("fichiers");
+    let minuterie;
+    formulaire.addEventListener("input", () => {
+      clearTimeout(minuterie);
+      fichiers.hidden = true;  // les fichiers déjà préparés ne correspondent plus
+      minuterie = setTimeout(async () => {
+        const r = await fetch("/demo/{{ fiche.id }}/identite", { method: "POST", body: new FormData(formulaire) });
+        const d = await r.json();
+        if (!r.ok) { etatIdentite.textContent = d.erreur; return; }
+        etatIdentite.textContent = {{ _('Enregistré')|tojson }} + " ✓";
+        for (const champ of ["objet", "corps", "sms"]) document.getElementById(champ).value = d[champ];
+        document.getElementById("lien-mail").href = d.lien_mail;
+        iframe.contentWindow.location.reload();
+      }, 500);
+    });
+
+    const bouton = document.getElementById("preparer");
+    const etatFichiers = document.getElementById("etat-fichiers");
+    bouton.addEventListener("click", async () => {
+      bouton.disabled = true;
+      etatFichiers.textContent = {{ _('Préparation en cours…')|tojson }};
+      try {
+        const r = await fetch("/demo/{{ fiche.id }}/preparer", { method: "POST" });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.erreur);
+        etatFichiers.textContent = {{ _('Fichiers prêts')|tojson }} + " ✓";
+        fichiers.hidden = false;
+      } catch (e) {
+        etatFichiers.textContent = e.message || {{ _('Erreur')|tojson }};
+      } finally {
+        bouton.disabled = false;
+      }
+    });
+
+    document.querySelectorAll("[data-copier]").forEach((b) => b.addEventListener("click", async () => {
+      const champ = document.getElementById(b.dataset.copier);
+      try { await navigator.clipboard.writeText(champ.value); } catch { champ.select(); document.execCommand("copy"); }
+      const texte = b.textContent; b.textContent = {{ _('Copié')|tojson }} + " ✓"; setTimeout(() => { b.textContent = texte; }, 1500);
+    }));
+  </script>
+{% endblock %}

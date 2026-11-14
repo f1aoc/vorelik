@@ -2,12 +2,18 @@
 
 Chaque famille a sa propre mise en page (templates/maquette/<code>.html, sur la base commune _base.html) et
 son ordre de sections. Les retouches de l'utilisateur (Options) remplacent les valeurs par défaut.
+
+Deux usages, selon les règles de Google Maps Platform (pas d'export du contenu Google hors de l'application) :
+  - aperçu dans l'application : fiche Google en direct, avec les crédits exigés ;
+  - export (images, PDF, page web envoyés au prospect) : aucun contenu Google. Seules les informations
+    d'identité vérifiées par le vendeur (Identite) et ses propres textes y figurent ; photos et avis sont
+    remplacés par des emplacements « Vos photos ici », « Vos avis clients ».
 """
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable
 from urllib.parse import quote
@@ -15,7 +21,7 @@ from urllib.parse import quote
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from demo_express.familles import FAMILLES, Famille, famille_de
-from demo_express.langue import langue_courante, nombre
+from demo_express.langue import MOIS, langue_courante, nombre
 from demo_express.places import Fiche
 
 GABARITS = Path(__file__).parent / "templates"
@@ -47,11 +53,20 @@ TEXTES = {
         "adresse": "Adresse",
         "telephone": "Téléphone",
         "voir_carte": "Voir sur Google Maps",
-        "photo_de": "Photo : {auteur}",
-        "credits": "Photos et avis : Google",
+        "photo_de_debut": "Photo : ",
+        "voir_sur": "Voir sur",
+        "avis": "avis",
+        "credits": "Informations, photos et avis :",
+        "credits_export": "Maquette à compléter avec vos photos, vos avis et vos horaires",
         "realise": "Maquette réalisée avec Démo Express",
         "horaires_absents": "Horaires communiqués sur demande.",
-        "avis_de": "Avis Google de {auteur}",
+        "selection_avis": "3 avis avec commentaire, parmi les plus pertinents selon",
+        "verification_avis": "Les avis ne sont pas vérifiés par Google Maps, qui recherche et supprime les faux contenus.",
+        "traduit": "Traduit par Google",
+        "visite": "Visite : {mois} {annee}",
+        "vos_photos": "Vos photos ici",
+        "vos_avis": "Les avis de vos clients s'afficheront ici.",
+        "vos_horaires": "Vos horaires d'ouverture",
         "besoin": "Un projet, une question ?",
         "besoin_texte": "Appelez-nous : nous vous répondons rapidement.",
     },
@@ -69,11 +84,20 @@ TEXTES = {
         "adresse": "Address",
         "telephone": "Phone",
         "voir_carte": "View on Google Maps",
-        "photo_de": "Photo: {auteur}",
-        "credits": "Photos and reviews: Google",
+        "photo_de_debut": "Photo: ",
+        "voir_sur": "View on",
+        "avis": "reviews",
+        "credits": "Information, photos and reviews:",
+        "credits_export": "Mockup to be completed with your photos, reviews and opening hours",
         "realise": "Mockup made with Démo Express",
         "horaires_absents": "Opening hours available on request.",
-        "avis_de": "Google review by {auteur}",
+        "selection_avis": "3 reviews with comments, among the most relevant according to",
+        "verification_avis": "Reviews are not verified by Google Maps, which checks for and removes fake content.",
+        "traduit": "Translated by Google",
+        "visite": "Visited {mois} {annee}",
+        "vos_photos": "Your photos here",
+        "vos_avis": "Your customers' reviews will appear here.",
+        "vos_horaires": "Your opening hours",
         "besoin": "A project or a question?",
         "besoin_texte": "Give us a call: we'll get back to you quickly.",
     },
@@ -114,6 +138,39 @@ class Options:
         return self
 
 
+@dataclass
+class Identite:
+    """Informations de l'entreprise pour l'export, vérifiées (ou tapées) par le vendeur."""
+    nom: str
+    metier: str = ""
+    ville: str = ""
+    telephone: str = ""
+
+    def nettoyer(self) -> "Identite":
+        self.nom, self.metier, self.ville = (x.strip()[:80] for x in (self.nom, self.metier, self.ville))
+        self.telephone = "".join(c for c in self.telephone if c.isdigit() or c in "+ .()-")[:30].strip()
+        return self
+
+
+NOMBRE_EMPLACEMENTS = 8  # photos de l'export (emplacements « Vos photos ici »)
+
+
+def fiche_export(fiche: Fiche, identite: Identite) -> Fiche:
+    """Fiche sans aucun contenu Google : identité vérifiée par le vendeur, le reste vide."""
+    return replace(
+        fiche, nom=identite.nom, metier=identite.metier, ville=identite.ville, adresse=identite.ville,
+        adresse_courte=identite.ville, telephone=identite.telephone, telephone_international="", horaires=[],
+        note=None, nombre_avis=0, avis=[], photos=[], lien_maps="", site="",
+    )
+
+
+def visite(date: tuple[int, int]) -> str:
+    """(2026, 3) → « Visite : mars 2026 » (exigé par Google pour les avis de lieux en France)."""
+    langue = langue_courante()
+    annee, mois = date
+    return TEXTES[langue]["visite"].format(mois=MOIS[langue][mois - 1], annee=annee)
+
+
 def _environnement() -> Environment:
     return Environment(loader=FileSystemLoader(GABARITS), autoescape=select_autoescape(["html"]))
 
@@ -124,18 +181,27 @@ def famille_retenue(fiche: Fiche, options: Options | None = None) -> Famille:
     return famille_de(fiche.type_principal, fiche.types, fiche.metier)
 
 
-def contexte(fiche: Fiche, options: Options | None = None, url_photo: Callable[..., str] = url_photo_apercu) -> dict:
+def contexte(fiche: Fiche, options: Options | None = None, url_photo: Callable[..., str] = url_photo_apercu,
+             identite: Identite | None = None) -> dict:
+    """identite donnée : contexte d'export (aucun contenu Google), sinon aperçu en direct."""
     options = (options or Options()).nettoyer()
     langue = langue_courante()
     famille = famille_retenue(fiche, options)
-    valeurs = {"nom": fiche.nom, "ville": fiche.ville or fiche.adresse_courte, "metier": fiche.metier}
+    export = identite is not None
     photos = fiche.photos
     if options.photos is not None:
         par_nom = {p.nom: p for p in fiche.photos}
         photos = [par_nom[n] for n in options.photos if n in par_nom]
+    avec_avis = bool(fiche.avis)
+    if export:
+        # Autant d'emplacements que de photos retenues (8 au plus), pour garder la même mise en page
+        photos = [None] * (min(len(photos), NOMBRE_EMPLACEMENTS) if options.photos is not None else NOMBRE_EMPLACEMENTS)
+        fiche = fiche_export(fiche, identite.nettoyer())
+        avec_avis = True
+    valeurs = {"nom": fiche.nom, "ville": fiche.ville or fiche.adresse_courte, "metier": fiche.metier}
     visibles = SECTIONS if options.sections is None else options.sections
     sections = [s for s in ORDRES[famille.code] if s in visibles]
-    if not fiche.avis and "avis" in sections:
+    if not avec_avis and "avis" in sections:
         sections.remove("avis")
     if len(photos) < 3 and "galerie" in sections:
         sections.remove("galerie")
@@ -146,8 +212,9 @@ def contexte(fiche: Fiche, options: Options | None = None, url_photo: Callable[.
         "langue": langue,
         "t": TEXTES[langue],
         "accroche": options.accroche or famille.accroche[langue],
-        # Le résumé Google n'est pas un modèle : jamais passé à format() (accolades possibles)
-        "presentation": options.presentation or fiche.resume or famille.presentation[langue].format(**valeurs),
+        "export": export,
+        "visite": visite,
+        "presentation": options.presentation or famille.presentation[langue].format(**valeurs),
         "services": options.services if options.services is not None else famille.services[langue],
         "action": options.action or famille.action[langue],
         "atouts": famille.atouts[langue],
@@ -162,6 +229,7 @@ def contexte(fiche: Fiche, options: Options | None = None, url_photo: Callable[.
     }
 
 
-def rendre(fiche: Fiche, options: Options | None = None, url_photo: Callable[..., str] = url_photo_apercu) -> str:
-    ctx = contexte(fiche, options, url_photo)
+def rendre(fiche: Fiche, options: Options | None = None, url_photo: Callable[..., str] = url_photo_apercu,
+           identite: Identite | None = None) -> str:
+    ctx = contexte(fiche, options, url_photo, identite)
     return _environnement().get_template(f"maquette/{ctx['famille'].code}.html").render(**ctx)

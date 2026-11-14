@@ -61,6 +61,21 @@ class Reglages:
             donnees.pop("cle_google", None)
         self._ecrire(donnees)
 
+    # --- Signature du vendeur (message de prospection) ---------------------------------------------------
+
+    @property
+    def vendeur(self):
+        from demo_express.messages import Vendeur
+
+        v = self._lire().get("vendeur", {})
+        return Vendeur(**{k: str(v.get(k, ""))[:120] for k in ("nom", "agence", "telephone", "email")})
+
+    def enregistrer_vendeur(self, nom: str, agence: str, telephone: str, email: str) -> None:
+        donnees = self._lire()
+        donnees["vendeur"] = {"nom": nom.strip()[:120], "agence": agence.strip()[:120],
+                              "telephone": telephone.strip()[:40], "email": email.strip()[:120]}
+        self._ecrire(donnees)
+
     # --- Langue -------------------------------------------------------------------------------------------
 
     @property

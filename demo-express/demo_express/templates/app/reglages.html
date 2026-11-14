@@ -10,6 +10,13 @@
     <label for="cle_google">{{ cle_masquee and _("Remplacer la clé") or _("Votre clé") }}</label>
     <input id="cle_google" name="cle_google" type="password" autocomplete="off" placeholder="AIza…">
 
+    <h2>{{ _("Votre signature") }}</h2>
+    <p class="petit">{{ _("Elle signe le message de prospection.") }}</p>
+    <label for="vendeur_nom">{{ _("Votre nom") }}</label><input id="vendeur_nom" name="vendeur_nom" value="{{ vendeur.nom }}" maxlength="120">
+    <label for="vendeur_agence">{{ _("Agence ou entreprise") }}</label><input id="vendeur_agence" name="vendeur_agence" value="{{ vendeur.agence }}" maxlength="120">
+    <label for="vendeur_telephone">{{ _("Téléphone") }}</label><input id="vendeur_telephone" name="vendeur_telephone" value="{{ vendeur.telephone }}" maxlength="40">
+    <label for="vendeur_email">{{ _("E-mail") }}</label><input id="vendeur_email" name="vendeur_email" type="email" value="{{ vendeur.email }}" maxlength="120">
+
     <h2>{{ _("Langue") }}</h2>
     <p class="petit">{{ _("Langue de l'application et des maquettes.") }}</p>
     <select name="langue" aria-label="{{ _('Langue') }}">

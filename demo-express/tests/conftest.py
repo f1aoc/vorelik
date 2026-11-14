@@ -16,7 +16,8 @@ def fiche_google(**autres) -> dict:
         "displayName": {"text": "Boulangerie Martin", "languageCode": "fr"},
         "formattedAddress": "12 Rue de la République, 69002 Lyon, France",
         "shortFormattedAddress": "12 Rue de la République, Lyon",
-        "addressComponents": [{"longText": "Lyon", "shortText": "Lyon", "types": ["locality", "political"]}],
+        "addressComponents": [{"longText": "Lyon", "shortText": "Lyon", "types": ["locality", "political"]},
+                              {"longText": "France", "shortText": "FR", "types": ["country", "political"]}],
         "nationalPhoneNumber": "04 78 00 00 00",
         "internationalPhoneNumber": "+33 4 78 00 00 00",
         "regularOpeningHours": {"weekdayDescriptions": ["lundi: 07:00–19:30", "mardi: 07:00–19:30", "dimanche: Fermé"]},
@@ -27,16 +28,24 @@ def fiche_google(**autres) -> dict:
         "types": ["bakery", "food_store", "store"],
         "googleMapsUri": "https://maps.google.com/?cid=123",
         "reviews": [
-            {"rating": 3, "text": {"text": "Correct."}, "authorAttribution": {"displayName": "Paul", "uri": "https://www.google.com/maps/contrib/1"},
+            {"rating": 5, "text": {"text": "Le meilleur pain du quartier, accueil adorable !", "languageCode": "fr"},
+             "originalText": {"text": "Le meilleur pain du quartier, accueil adorable !", "languageCode": "fr"},
+             "authorAttribution": {"displayName": "Julie R.", "uri": "https://www.google.com/maps/contrib/2",
+                                   "photoUri": "https://lh3.googleusercontent.com/a/julie"},
+             "relativePublishTimeDescription": "il y a une semaine", "visitDate": {"year": 2026, "month": 10},
+             "googleMapsUri": "https://www.google.com/maps/reviews/julie"},
+            {"rating": 3, "text": {"text": "", "languageCode": "fr"}, "authorAttribution": {"displayName": "Sans texte"}},
+            {"rating": 4, "text": {"text": "Good bread, friendly staff.", "languageCode": "fr"},
+             "originalText": {"text": "Good bread, friendly staff.", "languageCode": "en"},
+             "authorAttribution": {"displayName": "Paul", "uri": "https://www.google.com/maps/contrib/1"},
              "relativePublishTimeDescription": "il y a 2 mois"},
-            {"rating": 5, "text": {"text": "Le meilleur pain du quartier, accueil adorable !"},
-             "authorAttribution": {"displayName": "Julie R.", "uri": "https://www.google.com/maps/contrib/2"},
-             "relativePublishTimeDescription": "il y a une semaine"},
             {"rating": 5, "text": {"text": "Croissants délicieux."}, "authorAttribution": {"displayName": "Marc"}},
         ],
         "photos": [
             {"name": f"places/{PLACE_ID}/photos/photo{i}", "widthPx": 1600, "heightPx": 1200,
-             "authorAttributions": [{"displayName": f"Auteur {i}", "uri": f"https://maps.google.com/maps/contrib/{i}"}]}
+             "authorAttributions": [{"displayName": f"Auteur {i}", "uri": f"https://maps.google.com/maps/contrib/{i}",
+                                     "photoUri": f"https://lh3.googleusercontent.com/a/auteur{i}"}],
+             "googleMapsUri": f"https://www.google.com/maps/photo/{i}"}
             for i in range(12)
         ],
     }

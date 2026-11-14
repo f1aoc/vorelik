@@ -99,3 +99,19 @@ input, select { font: inherit; }
   .atelier { grid-template-columns: 1fr; }
   .panneau { position: static; max-height: none; }
 }
+
+.fil { margin: 0 0 8px; font-size: .9rem; }
+.fil a { text-decoration: none; }
+.envoi { display: grid; grid-template-columns: minmax(320px, 440px) minmax(0, 1fr); gap: 24px; align-items: start; margin-top: 18px; }
+.envoi .carte input, .envoi .carte textarea { width: 100%; max-width: none; padding: 10px 12px; border: 1px solid var(--bord); border-radius: 10px;
+  font: inherit; font-size: .92rem; margin: 4px 0 6px; display: block; background: #fff; color: var(--texte); }
+.envoi .carte label { display: block; font-size: .85rem; font-weight: 600; color: var(--doux); margin-top: 8px; }
+.envoi .carte textarea[readonly], .envoi .carte input[readonly] { background: #F8F9FD; }
+.envoi-apercu { position: sticky; top: 16px; }
+.fichiers { list-style: none; padding: 0; margin: 12px 0 0; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.fichiers a:not(.bouton) { font-weight: 600; }
+.copie { display: flex; gap: 8px; align-items: center; }
+.copie input { flex: 1; }
+.boutons-message { display: flex; flex-wrap: wrap; gap: 8px; }
+.bouton[disabled] { opacity: .6; cursor: progress; }
+@media (max-width: 960px) { .envoi { grid-template-columns: 1fr; } .envoi-apercu { position: static; } }

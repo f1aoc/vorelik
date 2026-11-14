@@ -1,7 +1,36 @@
-{# Sections communes à toutes les mises en page. Chaque macro reçoit « clair » (fond alterné). #}
+{# Sections communes à toutes les mises en page. Chaque macro de section reçoit « clair » (fond alterné).
 
+   Deux modes :
+   - aperçu (export faux) : contenu Google Maps affiché en direct avec les crédits exigés par Google
+     (mention « Google Maps », auteur de chaque photo et avis avec avatar, nom et lien, lien vers Google Maps) ;
+   - export (export vrai) : aucun contenu Google ; emplacements « Vos photos ici », « Vos avis clients ».
+#}
+
+{% macro google_maps(clair=false) -%}
+  <span class="gmp-attribution {{ 'gmp-clair' if clair }}" translate="no">Google Maps</span>
+{%- endmacro %}
+
+{% macro image(photo, largeur, alt="", classe="") -%}
+  {% if export or photo is none %}
+    <div class="photo emplacement-photo {{ classe }}" role="img" aria-label="{{ t.vos_photos }}"><span>{{ t.vos_photos }}</span></div>
+  {% else %}
+    <img class="photo {{ classe }}" src="{{ url_photo(photo.nom, largeur) }}" alt="{{ alt }}" loading="lazy">
+  {% endif %}
+{%- endmacro %}
+
+{% macro auteur_photo(photo) -%}
+  {% set a = photo.auteurs[0] %}
+  {{ t.photo_de_debut }}{% if a.lien %}<a href="{{ a.lien }}" target="_blank" rel="noopener">{{ a.nom }}</a>{% else %}{{ a.nom }}{% endif %}{% if photo.lien_google %} · <a href="{{ photo.lien_google }}" target="_blank" rel="noopener">{{ t.voir_sur }} {{ google_maps() }}</a>{% else %} · {{ google_maps() }}{% endif %}
+{%- endmacro %}
+
+{# Crédit sous une photo (galerie, « À propos ») #}
 {% macro credit(photo) -%}
-  {% if photo.auteurs %}<figcaption class="credit">{{ t.photo_de.format(auteur=photo.auteurs[0][0]) }}</figcaption>{% endif %}
+  {% if not export and photo is not none and photo.auteurs %}<figcaption class="credit">{{ auteur_photo(photo) }}</figcaption>{% endif %}
+{%- endmacro %}
+
+{# Crédit posé sur une grande photo (en-tête) #}
+{% macro credit_photo(photo) -%}
+  {% if not export and photo is not none and photo.auteurs %}<span class="credit-photo">{{ auteur_photo(photo) }}</span>{% endif %}
 {%- endmacro %}
 
 {% macro section_a_propos(clair) %}
@@ -13,7 +42,7 @@
       </div>
       {% if photos|length > 1 %}
         <figure class="cadre-photo">
-          <img src="{{ url_photo(photos[1].nom, 1200) }}" alt="" loading="lazy">
+          {{ image(photos[1], 1200) }}
           {{ credit(photos[1]) }}
         </figure>
       {% endif %}
@@ -43,7 +72,7 @@
       <div class="galerie">
         {% for p in photos[2:8] if photos|length > 2 %}
           <figure>
-            <img src="{{ url_photo(p.nom, 900) }}" alt="" loading="lazy">
+            {{ image(p, 900) }}
             {{ credit(p) }}
           </figure>
         {% endfor %}
@@ -56,17 +85,37 @@
   <section id="avis" class="{{ 'fond-clair' if clair }}">
     <div class="conteneur">
       <h2>{{ t.temoignages }}</h2>
-      <div class="avis">
-        {% for a in fiche.avis[:3] %}
-          <blockquote class="carte-avis">
-            <span class="etoiles" aria-label="{{ a.note }}/5">{{ "★" * a.note }}</span>
-            <p>« {{ a.texte|truncate(320, true, "…") }} »</p>
-            <footer>
-              {% if a.lien_auteur %}<a href="{{ a.lien_auteur }}" target="_blank" rel="noopener">{{ t.avis_de.format(auteur=a.auteur) }}</a>{% else %}{{ t.avis_de.format(auteur=a.auteur) }}{% endif %}{% if a.quand %} · {{ a.quand }}{% endif %}
-            </footer>
-          </blockquote>
-        {% endfor %}
-      </div>
+      {% if export %}
+        <div class="avis">
+          {% for i in range(3) %}
+            <div class="carte-avis emplacement-avis"><span class="etoiles">★★★★★</span><p>{{ t.vos_avis }}</p></div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="contenu-google">
+          <p class="mention-avis">{{ t.selection_avis }} {{ google_maps() }}</p>
+          <div class="avis">
+            {% for a in fiche.avis[:3] %}
+              <blockquote class="carte-avis">
+                <header class="auteur-avis">
+                  {% if a.auteur.avatar %}<img class="avatar" src="{{ a.auteur.avatar }}" alt="" width="36" height="36" referrerpolicy="no-referrer">{% endif %}
+                  <span>
+                    {% if a.auteur.lien %}<a href="{{ a.auteur.lien }}" target="_blank" rel="noopener">{{ a.auteur.nom }}</a>{% else %}{{ a.auteur.nom }}{% endif %}
+                    <small>{% if a.quand %}{{ a.quand }}{% endif %}{% if a.visite %} · {{ visite(a.visite) }}{% endif %}</small>
+                  </span>
+                </header>
+                <span class="etoiles" aria-label="{{ a.note }}/5">{{ "★" * a.note }}</span>
+                <p>« {{ a.texte|truncate(320, true, "…") }} »</p>
+                <footer>
+                  {% if a.traduit %}{{ t.traduit }} · {% endif %}
+                  {% if a.lien_google %}<a href="{{ a.lien_google }}" target="_blank" rel="noopener">{{ t.voir_sur }} {{ google_maps() }}</a>{% else %}{{ google_maps() }}{% endif %}
+                </footer>
+              </blockquote>
+            {% endfor %}
+          </div>
+          <p class="mention-avis">{{ t.verification_avis }}</p>
+        </div>
+      {% endif %}
     </div>
   </section>
 {% endmacro %}
@@ -78,15 +127,17 @@
       <div class="infos">
         <div class="bloc">
           <h3>{{ t.horaires }}</h3>
-          {% if fiche.horaires %}
+          {% if export %}<p class="a-completer">{{ t.vos_horaires }}</p>
+          {% elif fiche.horaires %}
             <ul>{% for ligne in fiche.horaires %}<li>{{ ligne }}</li>{% endfor %}</ul>
+            <p class="source">{{ google_maps() }}</p>
           {% else %}<p>{{ t.horaires_absents }}</p>{% endif %}
         </div>
         <div class="bloc">
           <h3>{{ t.adresse }}</h3>
           <p>{{ fiche.adresse }}</p>
           {% if fiche.telephone %}<p><strong>{{ t.telephone }} :</strong> <a class="lien" href="{{ telephone_lien }}">{{ fiche.telephone }}</a></p>{% endif %}
-          {% if fiche.lien_maps %}<p><a class="lien" href="{{ fiche.lien_maps }}" target="_blank" rel="noopener">{{ t.voir_carte }} →</a></p>{% endif %}
+          {% if fiche.lien_maps %}<p><a class="lien" href="{{ fiche.lien_maps }}" target="_blank" rel="noopener">{{ t.voir_sur }} {{ google_maps() }} →</a></p>{% endif %}
         </div>
       </div>
     </div>
@@ -100,6 +151,6 @@
   </div>
 {% endmacro %}
 
-{% macro note_google() %}
-  {% if note %}<div class="note"><span class="etoiles">{{ "★" * etoiles }}</span> <strong>{{ note }}</strong> · {{ fiche.nombre_avis }} {{ t.avis_google }}</div>{% endif %}
+{% macro note_google(clair=false) %}
+  {% if note and not export %}<div class="note contenu-google"><span class="etoiles">{{ "★" * etoiles }}</span> <strong>{{ note }}</strong> · {{ fiche.nombre_avis }} {{ t.avis }} · {{ google_maps(clair) }}</div>{% endif %}
 {% endmacro %}

@@ -11,7 +11,7 @@
   .metier { background: #fff; color: var(--couleur); border: 1px solid var(--bord); }
   .heros .accroche { color: var(--doux); font-size: 1.25rem; }
   .duo { position: relative; padding: 0 0 40px 40px; }
-  .duo img { border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%; aspect-ratio: 1; object-fit: cover; width: 100%; }
+  .duo .photo { border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%; aspect-ratio: 1; object-fit: cover; width: 100%; }
   .duo .medaillon { position: absolute; left: 0; bottom: 0; width: 38%; border: 6px solid #fff; border-radius: 50%; aspect-ratio: 1; }
   .duo .credit-photo { color: var(--doux); bottom: 0; }
   .bouton { border-radius: 999px; }
@@ -19,7 +19,7 @@
   .numero { display: inline-block; width: 40px; height: 40px; line-height: 40px; border-radius: 50%; background: var(--clair); }
   .galerie { grid-template-columns: repeat(3, 1fr); }
   .galerie figure:first-child { grid-column: span 2; grid-row: span 2; display: flex; flex-direction: column; }
-  .galerie figure:first-child img { aspect-ratio: auto; flex: 1; min-height: 0; }
+  .galerie figure:first-child .photo { aspect-ratio: auto; flex: 1; min-height: 0; }
   h2 { font-weight: 600; text-align: center; }
   .a-propos h2 { text-align: left; }
   @media (max-width: 820px) { .heros .conteneur { grid-template-columns: 1fr; } .duo { max-width: 420px; margin: 0 auto; } }
@@ -42,9 +42,9 @@
       </div>
       {% if photos %}
         <figure class="duo" style="margin:0">
-          <img src="{{ url_photo(photos[0].nom, 1400) }}" alt="{{ fiche.nom }}">
-          {% if photos|length > 1 %}<img class="medaillon" src="{{ url_photo(photos[1].nom, 600) }}" alt="">{% endif %}
-          {% if photos[0].auteurs %}<span class="credit-photo">{{ t.photo_de.format(auteur=photos[0].auteurs[0][0]) }}</span>{% endif %}
+          {{ m.image(photos[0], 1400, fiche.nom) }}
+          {% if photos|length > 1 %}{{ m.image(photos[1], 600, "", "medaillon") }}{% endif %}
+          {{ m.credit_photo(photos[0]) }}
         </figure>
       {% endif %}
     </div>

@@ -59,10 +59,14 @@ def test_fiche_complete(google):
     fiche = lancer(places.details(CLE, PLACE_ID))
     assert (fiche.nom, fiche.ville, fiche.telephone, fiche.metier) == ("Boulangerie Martin", "Lyon", "04 78 00 00 00", "Boulangerie")
     assert len(fiche.horaires) == 3 and fiche.note == 4.7 and fiche.nombre_avis == 128
-    # Meilleurs avis d'abord, 10 photos au plus, auteurs à créditer
-    assert [a.auteur for a in fiche.avis] == ["Julie R.", "Marc", "Paul"]
-    assert len(fiche.photos) == places.MAX_PHOTOS
-    assert fiche.photos[0].auteurs == [("Auteur 0", "https://maps.google.com/maps/contrib/0")]
+    # Ordre de Google (pertinence), avis sans commentaire écartés, 10 photos au plus
+    assert [a.auteur.nom for a in fiche.avis] == ["Julie R.", "Paul", "Marc"]
+    julie, paul, _ = fiche.avis
+    assert julie.auteur.avatar.endswith("/julie") and julie.lien_google.endswith("/julie") and julie.visite == (2026, 10)
+    assert not julie.traduit and paul.traduit and paul.visite is None
+    assert len(fiche.photos) == places.MAX_PHOTOS and fiche.pays == "FR"
+    assert fiche.photos[0].auteurs[0] == places.Auteur("Auteur 0", "https://maps.google.com/maps/contrib/0", "https://lh3.googleusercontent.com/a/auteur0")
+    assert fiche.photos[0].lien_google == "https://www.google.com/maps/photo/0"
     masque = google.calls[0].request.headers["X-Goog-FieldMask"]
     assert "reviews" in masque and "photos" in masque and "regularOpeningHours.weekdayDescriptions" in masque
 
