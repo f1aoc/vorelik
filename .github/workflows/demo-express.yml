@@ -1,5 +1,9 @@
-# Démo Express : tests à chaque modification (les installateurs viendront à l'étape 4).
-name: Démo Express – tests
+# Construit « Démo Express » comme Chasseur de sites :
+#   Windows : DemoExpress.exe (un seul fichier, double-clic, sans console)
+#   macOS   : DemoExpress-mac-apple-silicon.zip / DemoExpress-mac-intel.zip (application .app)
+# et les publie dans la release « demoexpress-latest » (liens permanents, sans compte GitHub) :
+#   https://github.com/f1aoc/vorelik/releases/download/demoexpress-latest/DemoExpress.exe
+name: Démo Express – exécutables
 
 on:
   workflow_dispatch:
@@ -8,13 +12,16 @@ on:
       - "demo-express/**"
       - ".github/workflows/demo-express.yml"
 
+permissions:
+  contents: write
+
+env:
+  # Cloudflare R2 (téléchargements de la page Merci) : actif dès que le secret R2_ACCOUNT_ID existe
+  R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+
 jobs:
-  tests:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+  windows:
+    runs-on: windows-latest
     defaults:
       run:
         working-directory: demo-express
@@ -27,6 +34,143 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install --only-binary=cryptography,cffi cryptography cffi
-          pip install -e ".[dev]"
-      - name: Tests (faux Google Places)
+          pip install -e ".[dev]" pyinstaller pillow
+      - name: Tests (faux Google Places ; la capture réelle est ignorée sans Chromium)
         run: pytest -q
+      - name: Icônes
+        run: python packaging/icone.py
+      - name: Construction de DemoExpress.exe
+        run: pyinstaller packaging/demo.spec --noconfirm
+      - name: Essai réel (lancement, interface qui répond, licence exigée)
+        shell: pwsh
+        env:
+          DEMO_SANS_NAVIGATEUR: "1"
+        run: |
+          $app = Start-Process -FilePath dist\DemoExpress.exe -PassThru
+          $ok = $false
+          for ($i = 0; $i -lt 90; $i++) {
+            Start-Sleep -Seconds 2
+            try { $r = Invoke-WebRequest -Uri http://127.0.0.1:8777/licence -UseBasicParsing -TimeoutSec 5
+                  if ($r.Content -match "Démo Express") { $ok = $true; break } } catch {}
+          }
+          $licence = curl.exe -s -o NUL -w "%{redirect_url}" http://127.0.0.1:8777/
+          taskkill /IM DemoExpress.exe /F /T | Out-Null
+          Get-Content "$env:USERPROFILE\.demo-express\console.log" -ErrorAction SilentlyContinue
+          if (-not $ok) { Write-Error "L'interface n'a pas répondu"; exit 1 }
+          if ($licence -notmatch "/licence$") { Write-Error "Sans licence, l'application devrait demander une clé (reçu : $licence)"; exit 1 }
+          Write-Output "Application lancée, interface OK, licence exigée"
+      - uses: actions/upload-artifact@v4
+        continue-on-error: true  # quota de stockage GitHub plein : la publication continue
+        with:
+          name: DemoExpress-windows
+          path: demo-express/dist/DemoExpress.exe
+          retention-days: 30
+      - name: Publication dans la release « Démo Express »
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: demoexpress-latest
+          name: Démo Express by VORELIK (dernière version)
+          target_commitish: ${{ github.sha }}
+          body: |
+            **Windows** : téléchargez **DemoExpress.exe** ci-dessous et double-cliquez dessus. Python n'est pas nécessaire.
+            La première fois, Windows peut afficher « Windows a protégé votre ordinateur » (application non signée) :
+            cliquez sur **Informations complémentaires → Exécuter quand même**.
+            **Mac** : téléchargez **DemoExpress-mac-apple-silicon.zip** (Mac M1/M2/M3/M4) ou
+            **DemoExpress-mac-intel.zip** (Mac Intel plus anciens), décompressez, glissez l'application dans
+            Applications. La première fois, macOS la bloque (application non notariée) : Réglages Système →
+            Confidentialité et sécurité → **Ouvrir quand même**.
+            Au premier export d'une maquette, le navigateur intégré (environ 150 Mo) est téléchargé une seule fois.
+          files: demo-express/dist/DemoExpress.exe
+          prerelease: true
+      - name: Copie dans Cloudflare R2 (téléchargements de la page Merci)
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: WHEN_REQUIRED
+          AWS_RESPONSE_CHECKSUM_VALIDATION: WHEN_REQUIRED
+        run: |
+          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+            echo "::warning::Copie dans Cloudflare R2 sautée : secret(s) absent(s) dans Settings → Secrets and variables → Actions"
+            exit 0
+          fi
+          aws s3 cp "dist/DemoExpress.exe" "s3://vorelik-telechargements/DemoExpress.exe" \
+            --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" --no-progress
+
+  mac:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-latest       # Apple Silicon (M1, M2, M3, M4…)
+            label: apple-silicon
+          - runner: macos-15-intel     # Mac Intel plus anciens
+            label: intel
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        working-directory: demo-express
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Dépendances
+        run: |
+          python -m pip install --upgrade pip
+          pip install --only-binary=cryptography,cffi cryptography cffi
+          pip install -e ".[dev]" pyinstaller pillow
+      - name: Tests (faux Google Places ; la capture réelle est ignorée sans Chromium)
+        run: pytest -q
+      - name: Icônes
+        run: python packaging/icone.py
+      - name: Construction de DemoExpress.app
+        run: pyinstaller packaging/demo.spec --noconfirm
+      - name: Essai réel (lancement, interface qui répond, licence exigée)
+        env:
+          DEMO_SANS_NAVIGATEUR: "1"
+        run: |
+          ./dist/DemoExpress.app/Contents/MacOS/DemoExpress &
+          PID=$!
+          OK=0
+          for i in $(seq 1 90); do
+            sleep 2
+            if curl -s --max-time 5 http://127.0.0.1:8777/licence | grep -q "Démo Express"; then OK=1; break; fi
+            kill -0 $PID 2>/dev/null || break
+          done
+          LICENCE=$(curl -s -o /dev/null -w "%{redirect_url}" http://127.0.0.1:8777/ || true)
+          kill $PID 2>/dev/null || true
+          test $OK = 1 || { echo "L'interface n'a pas répondu"; cat ~/.demo-express/console.log 2>/dev/null; exit 1; }
+          case "$LICENCE" in */licence) ;; *) echo "Sans licence, l'application devrait demander une clé (reçu : $LICENCE)"; exit 1;; esac
+          echo "Application lancée, interface OK, licence exigée"
+      - name: Archive
+        run: ditto -c -k --keepParent dist/DemoExpress.app dist/DemoExpress-mac-${{ matrix.label }}.zip
+      - uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: DemoExpress-mac-${{ matrix.label }}
+          path: demo-express/dist/DemoExpress-mac-${{ matrix.label }}.zip
+          retention-days: 30
+      - name: Publication dans la release « Démo Express »
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: demoexpress-latest
+          target_commitish: ${{ github.sha }}
+          files: demo-express/dist/DemoExpress-mac-${{ matrix.label }}.zip
+          prerelease: true
+      - name: Copie dans Cloudflare R2 (téléchargements de la page Merci)
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: WHEN_REQUIRED
+          AWS_RESPONSE_CHECKSUM_VALIDATION: WHEN_REQUIRED
+        run: |
+          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+            echo "::warning::Copie dans Cloudflare R2 sautée : secret(s) absent(s) dans Settings → Secrets and variables → Actions"
+            exit 0
+          fi
+          aws s3 cp "dist/DemoExpress-mac-${{ matrix.label }}.zip" "s3://vorelik-telechargements/DemoExpress-mac-${{ matrix.label }}.zip" \
+            --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" --no-progress
