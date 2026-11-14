@@ -1,0 +1,60 @@
+{% extends "maquette/_base.html" %}
+{% import "maquette/_sections.html" as m with context %}
+{# Pro : barre d'appel colorée, photo sombre, points forts cochés, services numérotés, bandeau « devis » #}
+{% block styles %}
+  :root { --rayon: 10px; }
+  h1, h2, h3 { text-transform: none; letter-spacing: -.01em; }
+  .barre-appel { background: var(--fonce); color: #fff; }
+  .barre-appel .entete { padding-top: 12px; padding-bottom: 12px; }
+  .barre-appel .marque { color: #fff; }
+  .tel-entete { background: var(--couleur); color: #fff; padding: 10px 18px; border-radius: var(--rayon); }
+  .heros { position: relative; min-height: min(72vh, 620px); display: flex; align-items: center; color: #fff; background: var(--fonce); overflow: hidden; }
+  .heros > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .heros::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,16,32,.92) 0%, rgba(10,16,32,.65) 55%, rgba(10,16,32,.2) 100%); }
+  .heros .conteneur { position: relative; z-index: 1; width: 100%; padding-top: 56px; padding-bottom: 56px; }
+  .heros h1 { color: #fff; font-size: clamp(2.2rem, 5.6vw, 3.8rem); max-width: 18ch; }
+  .metier { background: var(--couleur); color: #fff; border-radius: var(--rayon); }
+  .heros .accroche { color: rgba(255,255,255,.9); }
+  .bouton { border-radius: var(--rayon); }
+  .atouts { color: #fff; }
+  .atouts li { background: rgba(255,255,255,.1); padding: 8px 14px; border-radius: var(--rayon); }
+  .atouts li::before { color: #4ADE80; }
+  .service { border-left: 4px solid var(--couleur); }
+  .numero { font-size: 1.6rem; font-family: var(--titres); }
+  .appel-devis { background: var(--couleur); color: #fff; padding: 48px 0; }
+  .appel-devis .conteneur { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; }
+  .appel-devis h2 { color: #fff; margin: 0; }
+  .appel-devis p { margin: 6px 0 0; opacity: .9; }
+  .appel-devis .bouton { background: #fff; color: var(--couleur); }
+{% endblock %}
+{% block entete %}
+  <div class="barre-appel">
+    <header class="entete">
+      <a class="marque" href="#">{{ fiche.nom }}</a>
+      {% if fiche.telephone %}<a class="tel-entete" href="{{ telephone_lien }}">☎ <span>{{ fiche.telephone }}</span></a>{% endif %}
+    </header>
+  </div>
+{% endblock %}
+{% block heros %}
+  <section class="heros" style="padding:0">
+    {% if photos %}<img src="{{ url_photo(photos[0].nom, 2000) }}" alt="{{ fiche.nom }}">{% if photos[0].auteurs %}<span class="credit-photo">{{ t.photo_de.format(auteur=photos[0].auteurs[0][0]) }}</span>{% endif %}{% endif %}
+    <div class="conteneur">
+      {% if fiche.metier %}<span class="metier">{{ fiche.metier }}{% if fiche.ville %} · {{ fiche.ville }}{% endif %}</span>{% endif %}
+      <h1>{{ fiche.nom }}</h1>
+      <p class="accroche">{{ accroche }}</p>
+      {{ m.boutons() }}
+      <ul class="atouts">{% for a in atouts %}<li>{{ a }}</li>{% endfor %}</ul>
+      {{ m.note_google() }}
+    </div>
+  </section>
+{% endblock %}
+{% block avant_pied %}
+  {% if telephone_lien %}
+  <section class="appel-devis">
+    <div class="conteneur">
+      <div><h2>{{ t.besoin }}</h2><p>{{ t.besoin_texte }}</p></div>
+      <a class="bouton" href="{{ telephone_lien }}">{{ action }} · {{ fiche.telephone }}</a>
+    </div>
+  </section>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,105 @@
+{# Sections communes à toutes les mises en page. Chaque macro reçoit « clair » (fond alterné). #}
+
+{% macro credit(photo) -%}
+  {% if photo.auteurs %}<figcaption class="credit">{{ t.photo_de.format(auteur=photo.auteurs[0][0]) }}</figcaption>{% endif %}
+{%- endmacro %}
+
+{% macro section_a_propos(clair) %}
+  <section id="a-propos" class="{{ 'fond-clair' if clair }}">
+    <div class="conteneur a-propos">
+      <div>
+        <h2>{{ t.a_propos }}</h2>
+        <p class="texte-presentation">{{ presentation }}</p>
+      </div>
+      {% if photos|length > 1 %}
+        <figure class="cadre-photo">
+          <img src="{{ url_photo(photos[1].nom, 1200) }}" alt="" loading="lazy">
+          {{ credit(photos[1]) }}
+        </figure>
+      {% endif %}
+    </div>
+  </section>
+{% endmacro %}
+
+{% macro section_services(clair) %}
+  {% if services %}
+  <section id="services" class="{{ 'fond-clair' if clair }}">
+    <div class="conteneur">
+      <h2>{{ t.services }}</h2>
+      <div class="services">
+        {% for titre, texte in services %}
+          <article class="service"><span class="numero">{{ "%02d" % loop.index }}</span><h3>{{ titre }}</h3><p>{{ texte }}</p></article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+{% endmacro %}
+
+{% macro section_galerie(clair) %}
+  <section id="galerie" class="{{ 'fond-clair' if clair }}">
+    <div class="conteneur">
+      <h2>{{ t.galerie }}</h2>
+      <div class="galerie">
+        {% for p in photos[2:8] if photos|length > 2 %}
+          <figure>
+            <img src="{{ url_photo(p.nom, 900) }}" alt="" loading="lazy">
+            {{ credit(p) }}
+          </figure>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+{% endmacro %}
+
+{% macro section_avis(clair) %}
+  <section id="avis" class="{{ 'fond-clair' if clair }}">
+    <div class="conteneur">
+      <h2>{{ t.temoignages }}</h2>
+      <div class="avis">
+        {% for a in fiche.avis[:3] %}
+          <blockquote class="carte-avis">
+            <span class="etoiles" aria-label="{{ a.note }}/5">{{ "★" * a.note }}</span>
+            <p>« {{ a.texte|truncate(320, true, "…") }} »</p>
+            <footer>
+              {% if a.lien_auteur %}<a href="{{ a.lien_auteur }}" target="_blank" rel="noopener">{{ t.avis_de.format(auteur=a.auteur) }}</a>{% else %}{{ t.avis_de.format(auteur=a.auteur) }}{% endif %}{% if a.quand %} · {{ a.quand }}{% endif %}
+            </footer>
+          </blockquote>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+{% endmacro %}
+
+{% macro section_infos(clair) %}
+  <section id="infos" class="{{ 'fond-clair' if clair }}">
+    <div class="conteneur">
+      <h2>{{ t.infos }}</h2>
+      <div class="infos">
+        <div class="bloc">
+          <h3>{{ t.horaires }}</h3>
+          {% if fiche.horaires %}
+            <ul>{% for ligne in fiche.horaires %}<li>{{ ligne }}</li>{% endfor %}</ul>
+          {% else %}<p>{{ t.horaires_absents }}</p>{% endif %}
+        </div>
+        <div class="bloc">
+          <h3>{{ t.adresse }}</h3>
+          <p>{{ fiche.adresse }}</p>
+          {% if fiche.telephone %}<p><strong>{{ t.telephone }} :</strong> <a class="lien" href="{{ telephone_lien }}">{{ fiche.telephone }}</a></p>{% endif %}
+          {% if fiche.lien_maps %}<p><a class="lien" href="{{ fiche.lien_maps }}" target="_blank" rel="noopener">{{ t.voir_carte }} →</a></p>{% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+{% endmacro %}
+
+{% macro boutons(ligne_claire=true) %}
+  <div class="boutons">
+    {% if telephone_lien %}<a class="bouton bouton-plein" href="{{ telephone_lien }}">{{ action }}</a>{% endif %}
+    {% if fiche.lien_maps %}<a class="bouton {{ 'bouton-ligne' if ligne_claire else 'bouton-ligne-sombre' }}" href="{{ fiche.lien_maps }}" target="_blank" rel="noopener">{{ t.itineraire }}</a>{% endif %}
+  </div>
+{% endmacro %}
+
+{% macro note_google() %}
+  {% if note %}<div class="note"><span class="etoiles">{{ "★" * etoiles }}</span> <strong>{{ note }}</strong> · {{ fiche.nombre_avis }} {{ t.avis_google }}</div>{% endif %}
+{% endmacro %}

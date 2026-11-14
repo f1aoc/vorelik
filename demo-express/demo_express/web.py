@@ -1,7 +1,7 @@
 """Interface de Démo Express, dans le navigateur (n'écoute que sur l'ordinateur de l'utilisateur).
 
   /                 recherche de l'entreprise (nom + ville, ou lien Google Maps)
-  /demo/{id}        aperçu de la maquette, ordinateur et téléphone côte à côte
+  /demo/{id}        retouches et aperçu de la maquette, ordinateur et téléphone côte à côte
   /maquette/{id}    la maquette elle-même
   /photo            photos de la fiche, relayées depuis Google avec la clé du client
   /reglages         clé Google Places et langue
@@ -22,7 +22,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from demo_express import __version__, maquette, places
-from demo_express.familles import famille_de
+from demo_express.familles import FAMILLES
 from demo_express.langue import AUTO, _, langue_courante
 from demo_express.reglages import Reglages
 from demo_express.secret import ErreurSecret, masquer
@@ -53,6 +53,7 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None) -> FastAPI:
     env = Environment(loader=FileSystemLoader(DOSSIER / "templates"), autoescape=select_autoescape(["html"]))
     env.globals.update(_=_, version=__version__)
     fiches: Memoire = Memoire(30)
+    retouches: dict[str, maquette.Options] = {}  # par entreprise, le temps de la session
     images: Memoire = Memoire(120)
 
     def page(nom: str, request: Request, statut: int = 200, **valeurs) -> HTMLResponse:
@@ -93,8 +94,39 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None) -> FastAPI:
             fiche = await fiche_de(place_id)
         except places.ErreurPlaces as e:
             return page("accueil", request, statut=502, q="", candidats=[], erreur=str(e), sans_cle=not cle())
-        famille = famille_de(fiche.type_principal, fiche.types, fiche.metier)
-        return page("demo", request, fiche=fiche, famille=famille.nom[langue_courante()])
+        options = retouches.get(place_id, maquette.Options())
+        ctx = maquette.contexte(fiche, options)
+        choisies = [p.nom for p in ctx["photos"]]
+        # Photos : celles retenues dans leur ordre, puis les autres (décochées)
+        photos = [(p, p.nom in choisies) for p in sorted(fiche.photos, key=lambda p: choisies.index(p.nom) if p.nom in choisies else 99)]
+        langue = langue_courante()
+        return page("demo", request, fiche=fiche, ctx=ctx, photos=photos, retouche=place_id in retouches,
+                    modeles=[(f.code, f.modele[langue], f.nom[langue]) for f in FAMILLES.values()],
+                    sections=[(s, s in ctx["sections"]) for s in maquette.SECTIONS],
+                    noms_sections=NOMS_SECTIONS, palette=palette(ctx["famille"].couleur))
+
+    @app.post("/demo/{place_id}/options")
+    async def enregistrer_options(request: Request, place_id: str):
+        if not meme_origine(request) or place_id not in fiches:
+            return Response(status_code=403 if not meme_origine(request) else 404)
+        formulaire = await request.form()
+        options = options_du_formulaire(formulaire)
+        # Valeurs identiques à celles du modèle : non retenues (elles suivront un changement de modèle)
+        defaut = maquette.contexte(fiches[place_id], maquette.Options(modele=options.modele))
+        for champ in ("accroche", "presentation", "action", "couleur"):
+            if getattr(options, champ) == defaut[champ]:
+                setattr(options, champ, "")
+        if options.services is not None and [tuple(x) for x in defaut["services"]] == options.services:
+            options.services = None
+        retouches[place_id] = options
+        return Response(status_code=204)
+
+    @app.post("/demo/{place_id}/reinitialiser")
+    async def reinitialiser(request: Request, place_id: str):
+        if not meme_origine(request):
+            return Response(status_code=403)
+        retouches.pop(place_id, None)
+        return RedirectResponse(f"/demo/{place_id}", status_code=303)
 
     @app.get("/maquette/{place_id}", response_class=HTMLResponse)
     async def maquette_html(place_id: str):
@@ -102,7 +134,7 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None) -> FastAPI:
             fiche = await fiche_de(place_id)
         except places.ErreurPlaces as e:
             return HTMLResponse(f"<p style='font-family:sans-serif;padding:24px'>{e}</p>", status_code=502)
-        return HTMLResponse(maquette.rendre(fiche))
+        return HTMLResponse(maquette.rendre(fiche, retouches.get(place_id)), headers={"Cache-Control": "no-store"})
 
     @app.get("/photo")
     async def photo(nom: str, largeur: int = 1600):
@@ -138,6 +170,31 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None) -> FastAPI:
         return RedirectResponse("/reglages?enregistre=1", status_code=303)
 
     return app
+
+
+NOMS_SECTIONS = {
+    "a_propos": "À propos", "services": "Services", "galerie": "Galerie de photos", "avis": "Avis clients",
+    "infos": "Horaires et accès",
+}
+
+
+def palette(couleur: str) -> list[str]:
+    """Couleurs proposées : celle du modèle et les couleurs des autres familles."""
+    return list(dict.fromkeys([couleur, *(f.couleur for f in FAMILLES.values()), "#111827", "#0E7490", "#7C3AED"]))
+
+
+def options_du_formulaire(f) -> maquette.Options:
+    options = maquette.Options(
+        modele=f.get("modele", ""), accroche=f.get("accroche", ""), presentation=f.get("presentation", ""),
+        couleur=f.get("couleur", ""), action=f.get("action", ""),
+    )
+    if f.get("services_choisis"):
+        options.services = list(zip(f.getlist("service_titre"), f.getlist("service_texte")))
+    if f.get("photos_choisies"):
+        options.photos = f.getlist("photos")
+    if f.get("sections_choisies"):
+        options.sections = f.getlist("sections")
+    return options.nettoyer()
 
 
 def places_cle_propre(texte: str) -> str:

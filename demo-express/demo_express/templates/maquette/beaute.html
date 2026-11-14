@@ -1,0 +1,52 @@
+{% extends "maquette/_base.html" %}
+{% import "maquette/_sections.html" as m with context %}
+{# Douceur : fond pastel, grande photo arrondie avec une seconde en médaillon, galerie mise en avant #}
+{% block styles %}
+  :root { --rayon: 28px; }
+  .entete { justify-content: center; flex-direction: column; gap: 4px; text-align: center; }
+  .marque { font-size: 1.6rem; letter-spacing: .02em; }
+  .heros { background: linear-gradient(180deg, var(--clair), #fff); padding: clamp(36px, 6vw, 72px) 0; }
+  .heros .conteneur { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(28px, 5vw, 64px); align-items: center; }
+  .heros h1 { font-size: clamp(2.4rem, 6.5vw, 4.6rem); font-weight: 600; }
+  .metier { background: #fff; color: var(--couleur); border: 1px solid var(--bord); }
+  .heros .accroche { color: var(--doux); font-size: 1.25rem; }
+  .duo { position: relative; padding: 0 0 40px 40px; }
+  .duo img { border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%; aspect-ratio: 1; object-fit: cover; width: 100%; }
+  .duo .medaillon { position: absolute; left: 0; bottom: 0; width: 38%; border: 6px solid #fff; border-radius: 50%; aspect-ratio: 1; }
+  .duo .credit-photo { color: var(--doux); bottom: 0; }
+  .bouton { border-radius: 999px; }
+  .service { text-align: center; border-radius: var(--rayon); }
+  .numero { display: inline-block; width: 40px; height: 40px; line-height: 40px; border-radius: 50%; background: var(--clair); }
+  .galerie { grid-template-columns: repeat(3, 1fr); }
+  .galerie figure:first-child { grid-column: span 2; grid-row: span 2; display: flex; flex-direction: column; }
+  .galerie figure:first-child img { aspect-ratio: auto; flex: 1; min-height: 0; }
+  h2 { font-weight: 600; text-align: center; }
+  .a-propos h2 { text-align: left; }
+  @media (max-width: 820px) { .heros .conteneur { grid-template-columns: 1fr; } .duo { max-width: 420px; margin: 0 auto; } }
+{% endblock %}
+{% block entete %}
+  <header class="entete">
+    <a class="marque" href="#">{{ fiche.nom }}</a>
+    {% if fiche.telephone %}<a class="tel-entete" href="{{ telephone_lien }}">☎ <span>{{ fiche.telephone }}</span></a>{% endif %}
+  </header>
+{% endblock %}
+{% block heros %}
+  <section class="heros">
+    <div class="conteneur">
+      <div>
+        {% if fiche.metier %}<span class="metier">{{ fiche.metier }}{% if fiche.ville %} · {{ fiche.ville }}{% endif %}</span>{% endif %}
+        <h1>{{ fiche.nom }}</h1>
+        <p class="accroche">{{ accroche }}</p>
+        {{ m.boutons(false) }}
+        {{ m.note_google() }}
+      </div>
+      {% if photos %}
+        <figure class="duo" style="margin:0">
+          <img src="{{ url_photo(photos[0].nom, 1400) }}" alt="{{ fiche.nom }}">
+          {% if photos|length > 1 %}<img class="medaillon" src="{{ url_photo(photos[1].nom, 600) }}" alt="">{% endif %}
+          {% if photos[0].auteurs %}<span class="credit-photo">{{ t.photo_de.format(auteur=photos[0].auteurs[0][0]) }}</span>{% endif %}
+        </figure>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

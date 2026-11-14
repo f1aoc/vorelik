@@ -1,45 +1,125 @@
 {% extends "app/base.html" %}
-{% block titre %}{{ fiche.nom }} · Démo Express  <script>
-    // Aperçus à la vraie largeur d'écran (1280 px ordinateur, 390 px téléphone), réduits pour tenir dans leur cadre
-    for (const [selecteur, largeur] of [[".cadre-ordinateur", 1280], [".cadre-telephone", 390]]) {
-      const cadre = document.querySelector(selecteur);
-      const ajuster = () => {
-        const echelle = cadre.clientWidth / largeur;
-        const iframe = cadre.querySelector("iframe");
-        iframe.style.height = `${cadre.clientHeight / echelle}px`;
-        iframe.style.transform = `scale(${echelle})`;
-      };
-      new ResizeObserver(ajuster).observe(cadre);
-      ajuster();
-    }
-  </script>
-{% endblock %}
+{% block titre %}{{ fiche.nom }} · Démo Express{% endblock %}
 {% block contenu %}
   <section class="entete-demo">
     <div>
       <h1>{{ fiche.nom }}</h1>
-      <p>{{ fiche.metier }}{% if fiche.ville %} · {{ fiche.ville }}{% endif %} · {{ _("Modèle") }} : {{ famille }}</p>
+      <p>{{ fiche.metier }}{% if fiche.ville %} · {{ fiche.ville }}{% endif %}</p>
       <p class="petit">{{ fiche.photos|length }} {{ _("photos") }} · {{ fiche.avis|length }} {{ _("avis") }} · {{ fiche.horaires and _("horaires") or _("pas d'horaires") }}</p>
     </div>
     <div class="actions">
+      <span class="etat-enregistrement" id="etat" aria-live="polite"></span>
       <a class="bouton" href="/maquette/{{ fiche.id }}" target="_blank" rel="noopener">{{ _("Ouvrir en plein écran") }}</a>
     </div>
   </section>
 
-  <div class="apercus">
-    <figure class="ecran ecran-ordinateur">
-      <figcaption>{{ _("Ordinateur") }}</figcaption>
-      <div class="cadre-ordinateur"><iframe src="/maquette/{{ fiche.id }}" title="{{ _('Aperçu ordinateur') }}" loading="lazy"></iframe></div>
-    </figure>
-    <figure class="ecran ecran-telephone">
-      <figcaption>{{ _("Téléphone") }}</figcaption>
-      <div class="cadre-telephone"><iframe src="/maquette/{{ fiche.id }}" title="{{ _('Aperçu téléphone') }}" loading="lazy"></iframe></div>
-    </figure>
+  <div class="atelier">
+    <form class="panneau" id="retouches" autocomplete="off">
+      <fieldset>
+        <legend>{{ _("Modèle") }}</legend>
+        <div class="modeles">
+          {% for code, nom, famille in modeles %}
+            <label class="modele {{ 'actif' if code == ctx.famille.code }}">
+              <input type="radio" name="modele" value="{{ code }}" {% if code == ctx.famille.code %}checked{% endif %} data-recharger>
+              <strong>{{ nom }}</strong><span>{{ _(famille) }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>{{ _("Textes") }}</legend>
+        <label for="accroche">{{ _("Accroche") }}</label>
+        <input id="accroche" name="accroche" value="{{ ctx.accroche }}" maxlength="120">
+        <label for="presentation">{{ _("Présentation") }}</label>
+        <textarea id="presentation" name="presentation" rows="5" maxlength="900">{{ ctx.presentation }}</textarea>
+        <label for="action">{{ _("Bouton principal") }}</label>
+        <input id="action" name="action" value="{{ ctx.action }}" maxlength="40">
+      </fieldset>
+
+      <fieldset>
+        <legend>{{ _("Couleur") }}</legend>
+        <div class="palette">
+          {% for c in palette %}
+            <label class="pastille-couleur" style="--c: {{ c }}" title="{{ c }}">
+              <input type="radio" name="couleur" value="{{ c }}" {% if c|lower == ctx.couleur|lower %}checked{% endif %}>
+              <span></span>
+            </label>
+          {% endfor %}
+          <label class="couleur-libre" title="{{ _('Autre couleur') }}">
+            <input type="color" id="couleur-libre" value="{{ ctx.couleur }}">
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>{{ _("Services") }}</legend>
+        <input type="hidden" name="services_choisis" value="1">
+        {% for titre, texte in ctx.services %}
+          <div class="service-edition">
+            <input name="service_titre" value="{{ titre }}" maxlength="60" aria-label="{{ _('Titre du service') }} {{ loop.index }}">
+            <textarea name="service_texte" rows="2" maxlength="220" aria-label="{{ _('Description du service') }} {{ loop.index }}">{{ texte }}</textarea>
+          </div>
+        {% endfor %}
+        <p class="petit">{{ _("Videz un titre pour retirer le service.") }}</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>{{ _("Photos") }}</legend>
+        <input type="hidden" name="photos_choisies" value="1">
+        {% if photos %}
+          <p class="petit">{{ _("La première sert de grande photo d'accueil. Cochez, décochez, changez l'ordre.") }}</p>
+          <ol class="photos" id="photos">
+            {% for p, choisie in photos %}
+              <li class="photo">
+                <label>
+                  <input type="checkbox" name="photos" value="{{ p.nom }}" {% if choisie %}checked{% endif %}>
+                  <img src="/photo?nom={{ p.nom|urlencode }}&largeur=240" alt="" loading="lazy" width="96" height="72">
+                </label>
+                <span class="ordre">
+                  <button type="button" data-deplacer="-1" aria-label="{{ _('Monter') }}">↑</button>
+                  <button type="button" data-deplacer="1" aria-label="{{ _('Descendre') }}">↓</button>
+                </span>
+              </li>
+            {% endfor %}
+          </ol>
+        {% else %}
+          <p class="petit">{{ _("Cette fiche Google n'a pas de photo.") }}</p>
+        {% endif %}
+      </fieldset>
+
+      <fieldset>
+        <legend>{{ _("Sections") }}</legend>
+        <input type="hidden" name="sections_choisies" value="1">
+        {% for code, visible in sections %}
+          <label class="case"><input type="checkbox" name="sections" value="{{ code }}" {% if visible or (code == "avis" and not fiche.avis) or (code == "galerie" and ctx.photos|length < 3) %}checked{% endif %}> {{ _(noms_sections[code]) }}</label>
+        {% endfor %}
+        <p class="petit">{{ _("Les avis et la galerie n'apparaissent que si la fiche en contient (3 photos au moins pour la galerie).") }}</p>
+      </fieldset>
+    </form>
+
+    <div class="apercus">
+      <figure class="ecran ecran-ordinateur">
+        <figcaption>{{ _("Ordinateur") }}</figcaption>
+        <div class="cadre-ordinateur"><iframe src="/maquette/{{ fiche.id }}" title="{{ _('Aperçu ordinateur') }}"></iframe></div>
+      </figure>
+      <figure class="ecran ecran-telephone">
+        <figcaption>{{ _("Téléphone") }}</figcaption>
+        <div class="cadre-telephone"><iframe src="/maquette/{{ fiche.id }}" title="{{ _('Aperçu téléphone') }}"></iframe></div>
+      </figure>
+    </div>
   </div>
+
+  {% if retouche %}
+    <form method="post" action="/demo/{{ fiche.id }}/reinitialiser">
+      <button class="bouton bouton-discret" type="submit">{{ _("Revenir à la maquette d'origine") }}</button>
+    </form>
+  {% endif %}
   <p class="petit">{{ _("Les photos et avis viennent de la fiche Google de l'entreprise : ils ne sont pas enregistrés sur votre ordinateur. La maquette porte la mention « Maquette de démonstration ».") }}</p>
+
   <script>
     // Aperçus à la vraie largeur d'écran (1280 px ordinateur, 390 px téléphone), réduits pour tenir dans leur cadre
-    for (const [selecteur, largeur] of [[".cadre-ordinateur", 1280], [".cadre-telephone", 390]]) {
+    const cadres = [[".cadre-ordinateur", 1280], [".cadre-telephone", 390]].map(([selecteur, largeur]) => {
       const cadre = document.querySelector(selecteur);
       const ajuster = () => {
         const echelle = cadre.clientWidth / largeur;
@@ -49,6 +129,55 @@
       };
       new ResizeObserver(ajuster).observe(cadre);
       ajuster();
+      return cadre.querySelector("iframe");
+    });
+
+    // Retouches : enregistrées dès qu'on modifie un champ, puis les aperçus se rechargent à la même position
+    const formulaire = document.getElementById("retouches");
+    const etat = document.getElementById("etat");
+    let minuterie;
+    async function enregistrer(rechargerPage = false) {
+      etat.textContent = {{ _('Enregistrement…')|tojson }};
+      const r = await fetch("/demo/{{ fiche.id }}/options", { method: "POST", body: new FormData(formulaire) });
+      if (!r.ok) { etat.textContent = {{ _('Retouche non enregistrée')|tojson }}; return; }
+      if (rechargerPage) { location.reload(); return; }
+      etat.textContent = {{ _('Enregistré')|tojson }} + " ✓";
+      for (const iframe of cadres) {
+        const y = iframe.contentWindow.scrollY;
+        iframe.addEventListener("load", () => iframe.contentWindow.scrollTo(0, y), { once: true });
+        iframe.contentWindow.location.reload();
+      }
     }
+    formulaire.addEventListener("input", (e) => {
+      if (e.target.id === "couleur-libre") {
+        // Couleur libre : sélectionne une pastille temporaire portant cette valeur
+        let libre = formulaire.querySelector("input[name=couleur][data-libre]");
+        if (!libre) { libre = Object.assign(document.createElement("input"), { type: "radio", name: "couleur", hidden: true }); libre.dataset.libre = "1"; formulaire.append(libre); }
+        libre.value = e.target.value; libre.checked = true;
+      }
+      clearTimeout(minuterie);
+      minuterie = setTimeout(() => enregistrer(e.target.hasAttribute("data-recharger")), e.target.type === "text" || e.target.tagName === "TEXTAREA" ? 600 : 150);
+    });
+    // Modèle choisi : les textes par défaut du nouveau modèle remplacent ceux non retouchés
+    formulaire.addEventListener("change", (e) => {
+      if (e.target.hasAttribute("data-recharger")) {
+        for (const champ of ["accroche", "presentation", "action"]) formulaire.elements[champ].value = "";
+        formulaire.querySelectorAll("input[name=couleur]").forEach((x) => { x.checked = false; });
+        formulaire.querySelectorAll(".service-edition").forEach((x) => x.remove());
+        formulaire.elements["services_choisis"].value = "";
+        clearTimeout(minuterie);
+        enregistrer(true);
+      }
+    });
+    document.getElementById("photos")?.addEventListener("click", (e) => {
+      const bouton = e.target.closest("[data-deplacer]");
+      if (!bouton) return;
+      const li = bouton.closest("li");
+      const voisin = bouton.dataset.deplacer === "-1" ? li.previousElementSibling : li.nextElementSibling;
+      if (!voisin) return;
+      bouton.dataset.deplacer === "-1" ? voisin.before(li) : voisin.after(li);
+      bouton.focus();
+      enregistrer();
+    });
   </script>
 {% endblock %}

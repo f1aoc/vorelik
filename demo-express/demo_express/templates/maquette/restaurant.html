@@ -1,0 +1,38 @@
+{% extends "maquette/_base.html" %}
+{% import "maquette/_sections.html" as m with context %}
+{# Élégant : grande photo plein écran, texte centré, filet doré, services en carte de menu #}
+{% block styles %}
+  .heros { position: relative; min-height: min(86vh, 720px); display: grid; place-items: center; text-align: center; color: #fff;
+    background: var(--fonce); overflow: hidden; padding: 80px 20px; }
+  .heros > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .heros::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(0,0,0,.35), rgba(0,0,0,.75)); }
+  .heros .interieur { position: relative; z-index: 1; max-width: 760px; display: grid; justify-items: center; }
+  .heros h1 { color: #fff; font-size: clamp(2.4rem, 7vw, 4.6rem); }
+  .filet { width: 72px; height: 2px; background: #D9B26F; margin: 18px auto; }
+  .metier { color: #F3E3C3; border: 1px solid rgba(243,227,195,.5); }
+  .heros .accroche { margin: 0 auto 26px; color: rgba(255,255,255,.92); font-style: italic; }
+  .heros .boutons, .heros .note { justify-content: center; }
+  .atouts { justify-content: center; color: rgba(255,255,255,.9); }
+  .atouts li::before { content: "◆"; color: #D9B26F; font-size: .7rem; }
+  h2 { text-align: center; }
+  h2::after { content: ""; display: block; width: 48px; height: 2px; background: #D9B26F; margin: 14px auto 0; }
+  .services { grid-template-columns: 1fr; max-width: 760px; margin: 0 auto; gap: 0; }
+  .service { border: 0; border-bottom: 1px dotted var(--bord); border-radius: 0; background: transparent; padding: 18px 0;
+    display: grid; grid-template-columns: auto 1fr; gap: 4px 18px; }
+  .service .numero { grid-row: span 2; font-family: var(--titres); font-size: 1.4rem; color: #B8894A; }
+  .service h3 { margin: 0; }
+{% endblock %}
+{% block heros %}
+  <section class="heros" style="padding-top:80px;padding-bottom:80px">
+    {% if photos %}<img src="{{ url_photo(photos[0].nom, 2000) }}" alt="{{ fiche.nom }}">{% if photos[0].auteurs %}<span class="credit-photo">{{ t.photo_de.format(auteur=photos[0].auteurs[0][0]) }}</span>{% endif %}{% endif %}
+    <div class="interieur">
+      {% if fiche.metier %}<span class="metier">{{ fiche.metier }}{% if fiche.ville %} · {{ fiche.ville }}{% endif %}</span>{% endif %}
+      <h1>{{ fiche.nom }}</h1>
+      <div class="filet"></div>
+      <p class="accroche">{{ accroche }}</p>
+      {{ m.boutons() }}
+      <ul class="atouts">{% for a in atouts %}<li>{{ a }}</li>{% endfor %}</ul>
+      {{ m.note_google() }}
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "maquette/_base.html" %}
+{% import "maquette/_sections.html" as m with context %}
+{# Moderne : dégradé de la couleur principale, photo en carte inclinée, points forts en pastilles #}
+{% block styles %}
+  :root { --rayon: 16px; }
+  .entete-fond { background: var(--fonce); }
+  .entete-fond .marque { color: #fff; }
+  .entete-fond .tel-entete { color: #fff; }
+  .heros { background: linear-gradient(135deg, var(--fonce) 0%, var(--couleur) 120%); color: #fff; padding: clamp(40px, 7vw, 88px) 0; overflow: hidden; }
+  .heros .conteneur { display: grid; grid-template-columns: 1.1fr .9fr; gap: clamp(28px, 5vw, 64px); align-items: center; }
+  .heros h1 { color: #fff; font-size: clamp(2.2rem, 5.6vw, 3.9rem); }
+  .metier { background: rgba(255,255,255,.14); color: #fff; }
+  .heros .accroche { color: rgba(255,255,255,.88); }
+  .bouton-plein { background: #fff; color: var(--fonce); }
+  .atouts li { background: rgba(255,255,255,.12); color: #fff; padding: 6px 14px; border-radius: 999px; font-size: .88rem; }
+  .atouts li::before { color: #fff; }
+  .carte-inclinee { position: relative; margin: 0; transform: rotate(2deg); }
+  .carte-inclinee img { border-radius: var(--rayon); aspect-ratio: 4 / 3; object-fit: cover; width: 100%; box-shadow: 0 40px 80px -30px rgba(0,0,0,.6); }
+  .service { transition: transform .2s; }
+  .service:hover { transform: translateY(-4px); }
+  @media (max-width: 820px) { .heros .conteneur { grid-template-columns: 1fr; } .carte-inclinee { transform: none; } }
+{% endblock %}
+{% block entete %}
+  <div class="entete-fond">
+    <header class="entete">
+      <a class="marque" href="#">{{ fiche.nom }}</a>
+      {% if fiche.telephone %}<a class="tel-entete" href="{{ telephone_lien }}">☎ <span>{{ fiche.telephone }}</span></a>{% endif %}
+    </header>
+  </div>
+{% endblock %}
+{% block heros %}
+  <section class="heros">
+    <div class="conteneur">
+      <div>
+        {% if fiche.metier %}<span class="metier">{{ fiche.metier }}{% if fiche.ville %} · {{ fiche.ville }}{% endif %}</span>{% endif %}
+        <h1>{{ fiche.nom }}</h1>
+        <p class="accroche">{{ accroche }}</p>
+        {{ m.boutons() }}
+        <ul class="atouts">{% for a in atouts %}<li>{{ a }}</li>{% endfor %}</ul>
+        {{ m.note_google() }}
+      </div>
+      {% if photos %}
+        <figure class="carte-inclinee">
+          <img src="{{ url_photo(photos[0].nom, 1400) }}" alt="{{ fiche.nom }}">
+          {% if photos[0].auteurs %}<span class="credit-photo">{{ t.photo_de.format(auteur=photos[0].auteurs[0][0]) }}</span>{% endif %}
+        </figure>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

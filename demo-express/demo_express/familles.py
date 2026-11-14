@@ -21,6 +21,8 @@ class Famille:
     presentation: dict[str, str]
     services: dict[str, list[tuple[str, str]]]  # (titre, description)
     action: dict[str, str]  # bouton principal
+    modele: dict[str, str]  # nom de la mise en page, montré dans l'application
+    atouts: dict[str, list[str]]  # trois points forts courts, affichés sous l'accroche
 
 
 FAMILLES: dict[str, Famille] = {
@@ -44,6 +46,8 @@ FAMILLES: dict[str, Famille] = {
                    ("Groups and events", "Birthdays, business lunches: ask for our group menu.")],
         },
         action={"fr": "Réserver une table", "en": "Book a table"},
+        modele={"fr": "Élégant", "en": "Elegant"},
+        atouts={"fr": ["Fait maison", "Produits frais", "Accueil chaleureux"], "en": ["Homemade", "Fresh produce", "Warm welcome"]},
     ),
     "bouche": Famille(
         code="bouche",
@@ -65,6 +69,8 @@ FAMILLES: dict[str, Famille] = {
                    ("Seasonal products", "A selection that changes with the seasons.")],
         },
         action={"fr": "Passer commande", "en": "Place an order"},
+        modele={"fr": "Artisan", "en": "Artisan"},
+        atouts={"fr": ["Fait maison", "Produits sélectionnés", "Commandes sur demande"], "en": ["Homemade", "Selected ingredients", "Orders welcome"]},
     ),
     "beaute": Famille(
         code="beaute",
@@ -86,6 +92,8 @@ FAMILLES: dict[str, Famille] = {
                    ("Advice", "Personal tips to keep your style at home.")],
         },
         action={"fr": "Prendre rendez-vous", "en": "Book an appointment"},
+        modele={"fr": "Douceur", "en": "Soft"},
+        atouts={"fr": ["Conseils personnalisés", "Produits de qualité", "Sur rendez-vous"], "en": ["Personal advice", "Quality products", "By appointment"]},
     ),
     "batiment": Famille(
         code="batiment",
@@ -107,6 +115,8 @@ FAMILLES: dict[str, Famille] = {
                    ("Free quote", "A clear, detailed quote with no obligation.")],
         },
         action={"fr": "Demander un devis", "en": "Request a quote"},
+        modele={"fr": "Pro", "en": "Pro"},
+        atouts={"fr": ["Devis gratuit", "Intervention rapide", "Artisan local"], "en": ["Free quote", "Fast response", "Local tradesperson"]},
     ),
     "sante": Famille(
         code="sante",
@@ -127,6 +137,8 @@ FAMILLES: dict[str, Famille] = {
                    ("Practical information", "Opening hours, access and booking.")],
         },
         action={"fr": "Prendre rendez-vous", "en": "Book an appointment"},
+        modele={"fr": "Sérénité", "en": "Calm"},
+        atouts={"fr": ["Sur rendez-vous", "Écoute attentive", "Cadre calme"], "en": ["By appointment", "Attentive care", "Calm setting"]},
     ),
     "services": Famille(
         code="services",
@@ -148,6 +160,8 @@ FAMILLES: dict[str, Famille] = {
                    ("Close to you", "A local contact who is easy to reach.")],
         },
         action={"fr": "Nous contacter", "en": "Contact us"},
+        modele={"fr": "Moderne", "en": "Modern"},
+        atouts={"fr": ["Conseil personnalisé", "Réactivité", "Proximité"], "en": ["Personal advice", "Quick response", "Close to you"]},
     ),
 }
 
