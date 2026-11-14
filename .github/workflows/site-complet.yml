@@ -12,6 +12,7 @@ on:
       - "vitrine/**"
       - "chasseur-de-sites/site/**"
       - "audit-express/site/**"
+      - "demo-express/site/**"
       - "vitrine-en/**"
       - ".github/scripts/**"
       - ".github/workflows/site-complet.yml"
@@ -36,9 +37,26 @@ jobs:
           cp -r vitrine/. public/   # « /. » : copie aussi .htaccess (fichier caché)
           cp -r chasseur-de-sites/site/* public/chasseur-de-sites/
           cp -r audit-express/site/* public/audit-express/
+          mkdir -p public/demo-express && cp -r demo-express/site/* public/demo-express/
           # Version anglaise (/en/) : chaque page de vente est publiée dès que son lien de paiement Stripe en dollars
           # est renseigné (A_REMPLACER sinon) ; l'accueil anglais seulement quand toutes ses pages le sont.
           mkdir -p public/en && cp -r vitrine-en/. public/en/
+          # Démo Express : chaque langue est publiée dès que son lien de paiement Stripe est renseigné (A_REMPLACER sinon).
+          # En attendant, sa page est retirée, ainsi que sa carte et son lien dans la vitrine (blocs DEMO-EXPRESS).
+          retirer_demo() { rm -rf "$1"; perl -0pi -e 's/[ \t]*<!-- DEMO-EXPRESS.*?<!-- \/DEMO-EXPRESS -->\n?//gs' "$2"; }
+          if grep -q "A_REMPLACER" public/demo-express/index.html; then
+            echo "::warning::Démo Express (français) non publié : lien de paiement Stripe à renseigner"
+            retirer_demo public/demo-express public/index.html
+          else
+            grep -q "buy.stripe.com/[A-Za-z0-9]" public/demo-express/index.html || { echo "Page Démo Express sans lien Stripe"; exit 1; }
+          fi
+          if grep -q "A_REMPLACER" public/en/demo-express/index.html; then
+            echo "::warning::Démo Express (anglais) non publié : lien de paiement Stripe en dollars à renseigner"
+            retirer_demo public/en/demo-express public/en/index.html
+          fi
+          if grep -q "DEMO-EXPRESS" public/index.html public/en/index.html; then
+            test -d public/demo-express || test -d public/en/demo-express || { echo "Bloc DEMO-EXPRESS restant"; exit 1; }
+          fi
           retirees=0
           for page in public/en/*/index.html; do
             if grep -q "A_REMPLACER" "$page"; then

@@ -5,6 +5,7 @@
 Vérifie d'abord que les 9 fichiers répondent sur https://…workers.dev/telecharger/<fichier> ; si oui, remplace dans
 toutes les pages les liens GitHub par ces liens. Sinon, garde les liens GitHub et le signale (avertissement GitHub
 Actions) : une page de vente ne doit jamais proposer un téléchargement qui ne marche pas.
+Démo Express (3 fichiers) est traité à part : ses liens passent sur R2 seulement quand ses propres fichiers y sont.
 """
 
 import re
@@ -47,7 +48,27 @@ def present(fichier: str, essai: int = 1) -> bool:
         return False
 
 
+# Démo Express : ses 3 fichiers, ses liens (adresse complète, ou constante DEMO des pages Merci)
+FICHIERS_DEMO = ["DemoExpress.exe", "DemoExpress-mac-apple-silicon.zip", "DemoExpress-mac-intel.zip"]
+GITHUB_DEMO = [
+    ("https://github.com/f1aoc/vorelik/releases/download/demoexpress-latest/", SERVEUR + "/"),
+]
+DEMO_SUR_GITHUB = re.compile(r"github\.com/f1aoc/vorelik/releases/download/demoexpress-latest/")
+
 racine = Path(sys.argv[1])
+demo_sur_r2 = all(present(f) for f in FICHIERS_DEMO)
+if not demo_sur_r2:
+    print("::warning::Téléchargements de Démo Express laissés sur GitHub : fichiers absents de Cloudflare R2")
+else:
+    for page in sorted(racine.rglob("*.html")):
+        texte = page.read_text(encoding="utf-8")
+        nouveau = texte
+        for ancien, neuf in GITHUB_DEMO:
+            nouveau = nouveau.replace(ancien, neuf)
+        if nouveau != texte:
+            page.write_text(nouveau, encoding="utf-8")
+            print(f"{page.relative_to(racine)} : Démo Express depuis Cloudflare R2")
+
 manquants = [f for f in FICHIERS if not present(f)]
 if manquants:
     print(f"::warning::Téléchargements laissés sur GitHub : fichiers absents de Cloudflare R2 : {', '.join(manquants)}")
@@ -60,5 +81,6 @@ for page in sorted(racine.rglob("*.html")):
     if nouveau != texte:
         page.write_text(nouveau, encoding="utf-8")
         print(f"{page.relative_to(racine)} : téléchargements depuis Cloudflare R2")
-    if re.search(r"github\.com/f1aoc/[\w-]+/releases/download", nouveau):
+    # Liens de Démo Express encore sur GitHub (ses fichiers ne sont pas encore sur R2) : attendus
+    if re.search(r"github\.com/f1aoc/[\w-]+/releases/download", DEMO_SUR_GITHUB.sub("", nouveau)):
         sys.exit(f"{page.relative_to(racine)} : lien de téléchargement GitHub non converti")

@@ -279,7 +279,10 @@
     const CE_LOGICIEL = "pack";  // aucun logiciel « principal » : chaque clé a son lien vers le guide de son logiciel
     const TELECHARGEMENTS = "https://github.com/f1aoc/vorelik/releases/download";
     const AUDIT = "https://github.com/f1aoc/audit_express/releases/download/auditexpress-latest/AuditExpress";
+    const DEMO = "https://github.com/f1aoc/vorelik/releases/download/demoexpress-latest/DemoExpress";
     const LOGICIELS = {
+      "demo-express": { nom: "Démo Express", page: "../demo-express/merci.html",
+        fichiers: { win: `${DEMO}.exe`, silicon: `${DEMO}-mac-apple-silicon.zip`, intel: `${DEMO}-mac-intel.zip` } },
       "audit-express": { nom: "Audit express", page: "../audit-express/merci.html",
         fichiers: { win: `${AUDIT}-Windows.zip`, silicon: `${AUDIT}-mac-apple-silicon.zip`, intel: `${AUDIT}-mac-intel.zip` } },
       "chasseur-de-sites": { nom: "Chasseur de sites", page: "../chasseur-de-sites/merci.html",

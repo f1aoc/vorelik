@@ -160,6 +160,22 @@ les logiciels. (Pour info, les emplacements sont : `SERVEUR` et `LIEN_ACHAT` dan
    adresses possibles, séparées par des virgules, par exemple `https://monsite.fr, https://www.monsite.fr`).
 3. Une fois corrigé, rechargez simplement la page « Merci » du paiement : la clé apparaît (inutile de repayer).
 
+### Ajouter un logiciel : Démo Express
+
+1. Stripe (mode réel) : **Product catalog → + Add product** `Démo Express`, **One-off**, 99 € (et, pour le site
+   anglais, un second prix ou produit en dollars). Notez le `prod_…`.
+2. **Payment Links → + New** pour ce produit, **After payment → Redirect** vers :
+   - `https://www.vorelik.com/demo-express/merci.html?session_id={CHECKOUT_SESSION_ID}` (euros)
+   - `https://www.vorelik.com/en/demo-express/thank-you.html?session_id={CHECKOUT_SESSION_ID}` (dollars)
+
+   Cochez **Require customers to accept your terms of service**.
+3. Cloudflare → `PRODUITS` : **ajoutez** (sans rien retirer) l'entrée
+   `"prod_…": {"code": "demo-express", "prefixe": "DEX", "limite": 2}` (une par `prod_…` si vous en avez deux),
+   puis **Deploy**. `/diagnostic` doit afficher `… → demo-express (DEX)`.
+4. Remplacez `https://buy.stripe.com/A_REMPLACER` par le lien de paiement dans `demo-express/site/index.html` (euros)
+   et `vitrine-en/demo-express/index.html` (dollars). Tant que ce n'est pas fait, le site complet publie tout sauf
+   Démo Express (sa page et sa carte dans la vitrine sont retirées automatiquement).
+
 ## Étape 8 — Passer en réel
 
 Les produits, liens et clés du mode test **n'existent pas** en mode réel.

@@ -148,6 +148,9 @@
     .product.btl::before { background: var(--btl); }
     .product.cds::before { background: var(--cds); }
     .product.aex::before { background: var(--aex); }
+    .product.dex::before { background: linear-gradient(120deg, #6D5BEF, #DB2777 70%); }
+    .product.dex li::before { content: "✔"; font-weight: 800; color: #6D5BEF; }
+    .btn-dex { background: linear-gradient(120deg, #6D5BEF, #DB2777 70%); color: #fff; box-shadow: 0 14px 30px -12px rgba(109, 91, 239, .6); }
     .product-top { display: flex; align-items: center; gap: 14px; }
     .product-top img { width: 58px; height: 58px; border-radius: 16px; box-shadow: 0 10px 24px -10px rgba(15, 23, 51, .5); }
     .product h3 { font-size: 1.4rem; font-weight: 800; }
@@ -438,6 +441,27 @@
             </div>
           </article>
 
+          <!-- DEMO-EXPRESS : bloc retiré automatiquement du site tant que la page de vente attend son lien de paiement -->
+          <!-- ===== App: Démo Express ===== -->
+          <article class="product dex reveal">
+            <div class="product-top">
+              <img src="../assets/demo-express-icone.png" width="58" height="58" alt="">
+              <div><h3>Démo Express</h3><span class="by">by VORELIK</span></div>
+            </div>
+            <p class="pitch">Show your prospect their future website, in their name, in two minutes.</p>
+            <ul>
+              <li>The mockup from their Google listing</li>
+              <li>6 layouts by trade, live editing</li>
+              <li>PDF, images and message ready to send</li>
+            </ul>
+            <div class="chips"><span>Windows</span><span>Mac</span><span>Mockup</span></div>
+            <div class="foot" style="margin-top:26px">
+              <div class="price">$109<small>one-time payment</small></div>
+              <a class="btn btn-dex" href="demo-express/">Discover →</a>
+            </div>
+          </article>
+          <!-- /DEMO-EXPRESS -->
+
           <!-- ===== Pack des trois logiciels ===== -->
           <article class="product pack reveal" id="pack">
             <div class="pack-icons">
@@ -636,6 +660,7 @@
           <li><a href="bridgetoleads/">BridgeToLeads</a></li>
           <li><a href="site-hunter/">Site Hunter</a></li>
           <li><a href="audit-express/">Audit Express</a></li>
+          <!-- DEMO-EXPRESS --><li><a href="demo-express/">Démo Express</a></li><!-- /DEMO-EXPRESS -->
           <li><a href="#coming">Coming soon…</a></li>
         </ul>
       </div>
