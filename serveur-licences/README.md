@@ -162,8 +162,8 @@ les logiciels. (Pour info, les emplacements sont : `SERVEUR` et `LIEN_ACHAT` dan
 
 ### Ajouter un logiciel : Démo Express
 
-1. Stripe (mode réel) : **Product catalog → + Add product** `Démo Express`, **One-off**, 99 € (et, pour le site
-   anglais, un second prix ou produit en dollars). Notez le `prod_…`.
+1. Stripe (mode réel) : **Product catalog → + Add product** `Démo Express`, **One-off**, 89 € (et, pour le site
+   anglais, un second prix ou produit à 99 $). Notez le `prod_…`.
 2. **Payment Links → + New** pour ce produit, **After payment → Redirect** vers :
    - `https://www.vorelik.com/demo-express/merci.html?session_id={CHECKOUT_SESSION_ID}` (euros)
    - `https://www.vorelik.com/en/demo-express/thank-you.html?session_id={CHECKOUT_SESSION_ID}` (dollars)

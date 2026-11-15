@@ -7,14 +7,14 @@ nom, métier, horaires, avis et photos. On l'envoie au commerçant ou on la mont
 Complète la gamme : BridgeToLeads trouve les entreprises sans site, Chasseur de sites repère les sites en panne,
 Audit express prouve le problème, Démo Express fait signer.
 
-## État : étape 3 sur 4
+## État : étapes 1 à 4 faites (mise en vente : liens de paiement Stripe à renseigner)
 
 | Étape | Contenu | État |
 |---|---|---|
 | 1 | Recherche (nom + ville ou lien Google Maps), fiche Google, premier modèle, aperçu ordinateur et téléphone | fait |
 | 2 | 6 mises en page (Élégant, Artisan, Douceur, Pro, Sérénité, Moderne), retouches en direct : modèle, accroche, présentation, bouton, couleur, services, photos (choix et ordre), sections | fait |
 | 3 | Conformité Google (crédits « Google Maps », auteurs, liens, date de visite, sélection des avis expliquée) ; envoi au prospect : PNG ordinateur et téléphone, PDF, page web, ZIP **sans contenu Google** ; message e-mail et SMS (FR/EN) signé | fait |
-| 4 | Installateurs Windows et Mac, licence Stripe (`DEX-…`), pages de vente FR et EN (99 €), vitrine, pack | à faire |
+| 4 | Installateurs Windows et Mac, licence Stripe (`DEX-…`), pages de vente FR (89 €) et EN (99 $), vitrine | fait |
 
 ## Règles Google respectées
 
