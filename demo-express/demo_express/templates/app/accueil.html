@@ -26,6 +26,7 @@
           <a class="candidat" href="/demo/{{ c.id }}">
             <strong>{{ c.nom }}</strong>
             <span>{{ c.metier }}{% if c.metier and c.adresse %} · {% endif %}{{ c.adresse }}</span>
+            {% if c.adresse_seule %}<span class="petit">{{ _("Simple adresse sur Google, sans fiche d'entreprise : ni métier, ni photos, ni avis.") }}</span>{% endif %}
             <span class="details">
               {% if c.note %}★ {{ c.note }} ({{ c.nombre_avis }}){% endif %}
               {% if c.fermee %}<em class="etiquette etiquette-alerte">{{ _("Fermée") }}</em>

@@ -88,3 +88,35 @@ def test_photo(google):
     contenu, type_mime = lancer(places.photo(CLE, f"places/{PLACE_ID}/photos/photo0", 800))
     assert contenu.startswith(b"\xff\xd8") and type_mime == "image/jpeg"
     assert google.calls[0].request.url.params["maxWidthPx"] == "800"
+
+
+@pytest.mark.parametrize("texte, attendu", [
+    ("DELPHINE FLEURS 22 Route Nationale 7, 13670 Saint-Andiol", "DELPHINE FLEURS Saint-Andiol"),
+    ("Garage Dupont 4 rue des Lilas, 44000 Nantes", "Garage Dupont Nantes"),
+    ("Boulangerie Martin Lyon", ""),
+    ("22 Route Nationale 7, 13670 Saint-Andiol", ""),
+])
+def test_recherche_sans_adresse(texte, attendu):
+    assert places.sans_adresse(texte) == attendu
+
+
+def test_adresse_seule_puis_entreprise_retrouvee():
+    """Recherche avec l'adresse complète : Google ne renvoie que l'adresse ; on relance avec nom + ville."""
+    import respx
+
+    adresse = {"id": "ChIJ_adresse", "displayName": {"text": "22 Route Nationale 7"},
+               "formattedAddress": "22 Rte Nationale 7, 13670 Saint-Andiol, France", "types": ["street_address"]}
+    fleuriste = {"id": "ChIJ_delphine", "displayName": {"text": "Delphine Fleurs"}, "primaryType": "florist",
+                 "primaryTypeDisplayName": {"text": "Fleuriste"}, "formattedAddress": "Saint-Andiol", "types": ["florist"]}
+    requetes = []
+
+    def repondre(request):
+        texte = json.loads(request.content)["textQuery"]
+        requetes.append(texte)
+        return Response(200, json={"places": [adresse] if any(c.isdigit() for c in texte) else [fleuriste]})
+
+    with respx.mock:
+        respx.post("https://places.googleapis.com/v1/places:searchText").mock(side_effect=repondre)
+        resultats = lancer(places.rechercher(CLE, "DELPHINE FLEURS 22 Route Nationale 7, 13670 Saint-Andiol"))
+    assert requetes == ["DELPHINE FLEURS 22 Route Nationale 7, 13670 Saint-Andiol", "DELPHINE FLEURS Saint-Andiol"]
+    assert [(c.nom, c.adresse_seule) for c in resultats] == [("Delphine Fleurs", False), ("22 Route Nationale 7", True)]

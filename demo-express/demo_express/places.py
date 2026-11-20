@@ -21,8 +21,13 @@ FICHE = "https://places.googleapis.com/v1/places/{id}"
 MEDIA = "https://places.googleapis.com/v1/{nom}/media"
 CHAMPS_RECHERCHE = [
     "places.id", "places.displayName", "places.formattedAddress", "places.primaryTypeDisplayName",
-    "places.rating", "places.userRatingCount", "places.websiteUri", "places.businessStatus",
+    "places.rating", "places.userRatingCount", "places.websiteUri", "places.businessStatus", "places.primaryType",
+    "places.types",
 ]
+# Résultat qui n'est qu'une adresse (pas une fiche d'entreprise) : Google le renvoie quand la recherche
+# contient une adresse complète (« Delphine Fleurs 22 Route Nationale 7, 13670 Saint-Andiol »)
+TYPES_ADRESSE = {"street_address", "premise", "subpremise", "route", "geocode", "intersection", "plus_code",
+                 "postal_code", "street_number"}
 CHAMPS_FICHE = [
     "id", "displayName", "formattedAddress", "shortFormattedAddress", "addressComponents", "nationalPhoneNumber",
     "internationalPhoneNumber", "regularOpeningHours.weekdayDescriptions", "rating", "userRatingCount", "reviews",
@@ -54,6 +59,21 @@ class Candidat:
     nombre_avis: int = 0
     site: str = ""
     fermee: bool = False
+    adresse_seule: bool = False  # simple adresse, sans fiche d'entreprise
+
+
+def est_adresse_seule(fiche: "Fiche") -> bool:
+    """Fiche d'une simple adresse (aucun métier), pas d'une entreprise."""
+    return not fiche.type_principal and not fiche.metier and any(t in TYPES_ADRESSE for t in fiche.types)
+
+
+def sans_adresse(texte: str) -> str:
+    """« Delphine Fleurs 22 Route Nationale 7, 13670 Saint-Andiol » → « Delphine Fleurs Saint-Andiol »."""
+    if not re.search(r"\d", texte):
+        return ""
+    nom = re.split(r"\d", texte, maxsplit=1)[0].strip(" ,-–")
+    ville = re.sub(r"[\d]+", "", texte.rsplit(",", 1)[1]).strip(" ,-–") if "," in texte else ""
+    return f"{nom} {ville}".strip() if nom else ""
 
 
 @dataclass
@@ -176,28 +196,42 @@ async def rechercher(cle: str, texte: str, client: httpx.AsyncClient | None = No
             texte = texte_depuis_lien(await resoudre_lien(lien, http))
             if not texte:
                 raise ErreurPlaces(_("Ce lien ne permet pas de retrouver l'entreprise : tapez plutôt son nom et sa ville."))
-        corps = {"textQuery": texte, "pageSize": 10, **langue_api()}
-        entetes = {"X-Goog-Api-Key": cle, "X-Goog-FieldMask": ",".join(CHAMPS_RECHERCHE)}
-        r = await _envoyer(http, "POST", RECHERCHE, json=corps, headers=entetes)
-        if r.status_code != 200:
-            raise _erreur(r)
-        return [
-            Candidat(
-                id=p["id"],
-                nom=p.get("displayName", {}).get("text", ""),
-                adresse=p.get("formattedAddress", ""),
-                metier=p.get("primaryTypeDisplayName", {}).get("text", ""),
-                note=p.get("rating"),
-                nombre_avis=p.get("userRatingCount", 0),
-                site=p.get("websiteUri", ""),
-                fermee=p.get("businessStatus", "OPERATIONAL") != "OPERATIONAL",
-            )
-            for p in r.json().get("places", [])
-            if p.get("id")
-        ]
+        resultats = await _chercher(cle, texte, http)
+        if all(c.adresse_seule for c in resultats) and (simple := sans_adresse(texte)) and simple != texte:
+            # Seulement des adresses : nouvelle recherche sans le numéro et la rue (nom + ville)
+            vus = {c.id for c in resultats}
+            entreprises = [c for c in await _chercher(cle, simple, http) if c.id not in vus]
+            resultats = [*(c for c in entreprises if not c.adresse_seule), *resultats,
+                         *(c for c in entreprises if c.adresse_seule)]
+        # Entreprises d'abord, simples adresses ensuite
+        return sorted(resultats, key=lambda c: c.adresse_seule)
     finally:
         if client is None:
             await http.aclose()
+
+
+async def _chercher(cle: str, texte: str, http: httpx.AsyncClient) -> list[Candidat]:
+    corps = {"textQuery": texte, "pageSize": 10, **langue_api()}
+    entetes = {"X-Goog-Api-Key": cle, "X-Goog-FieldMask": ",".join(CHAMPS_RECHERCHE)}
+    r = await _envoyer(http, "POST", RECHERCHE, json=corps, headers=entetes)
+    if r.status_code != 200:
+        raise _erreur(r)
+    return [
+        Candidat(
+            id=p["id"],
+            nom=p.get("displayName", {}).get("text", ""),
+            adresse=p.get("formattedAddress", ""),
+            metier=p.get("primaryTypeDisplayName", {}).get("text", ""),
+            note=p.get("rating"),
+            nombre_avis=p.get("userRatingCount", 0),
+            site=p.get("websiteUri", ""),
+            fermee=p.get("businessStatus", "OPERATIONAL") != "OPERATIONAL",
+            adresse_seule=not p.get("primaryType") and not p.get("primaryTypeDisplayName")
+            and any(t in TYPES_ADRESSE for t in p.get("types", [])),
+        )
+        for p in r.json().get("places", [])
+        if p.get("id")
+    ]
 
 
 # --- Fiche complète ------------------------------------------------------------------------------------------

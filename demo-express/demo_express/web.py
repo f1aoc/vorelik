@@ -127,8 +127,11 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None, capturer: Capt
 
     async def fiche_de(place_id: str) -> places.Fiche:
         if place_id not in fiches:
-            fiche = await places.details(cle(), place_id)
-            fiches.garder(place_id, replace(fiche, indice=indices.get(place_id, "")))
+            fiche = replace(await places.details(cle(), place_id), indice=indices.get(place_id, ""))
+            nom_tape = re.split(r"\d", fiche.indice, maxsplit=1)[0].strip(" ,-–")
+            if places.est_adresse_seule(fiche) and nom_tape and re.search(r"\d", fiche.indice):
+                fiche = replace(fiche, nom=nom_tape)  # simple adresse : le nom tapé par le vendeur
+            fiches.garder(place_id, fiche)
         return fiches[place_id]
 
     @app.get("/", response_class=HTMLResponse)

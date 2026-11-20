@@ -177,3 +177,14 @@ def test_capture_reelle(tmp_path, monkeypatch):
     largeur_tel = int.from_bytes(c.telephone[16:20], "big")
     assert largeur == 1280 and largeur_tel == 780  # téléphone : 390 px en densité 2
     assert c.pdf.count(b"/Type /Page") - c.pdf.count(b"/Type /Pages") == 1  # une seule longue page
+
+
+def test_fiche_adresse_seule_prend_le_nom_tape(client, google):
+    from conftest import fiche_google
+    from httpx import Response
+    google.get(f"https://places.googleapis.com/v1/places/{PLACE_ID}").mock(return_value=Response(200, json=fiche_google(
+        displayName={"text": "22 Route Nationale 7"}, primaryType="", primaryTypeDisplayName={}, types=["street_address"])))
+    client.get("/", params={"q": "DELPHINE FLEURS 22 Route Nationale 7, 13670 Saint-Andiol"})
+    atelier = client.get(f"/demo/{PLACE_ID}").text
+    assert "<h1>DELPHINE FLEURS</h1>" in atelier or "DELPHINE FLEURS" in atelier.split("</h1>")[0]
+    assert 'value="DELPHINE FLEURS"' in client.get(f"/demo/{PLACE_ID}/envoyer").text
