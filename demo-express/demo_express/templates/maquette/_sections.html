@@ -3,7 +3,8 @@
    Deux modes :
    - aperçu (export faux) : contenu Google Maps affiché en direct avec les crédits exigés par Google
      (mention « Google Maps », auteur de chaque photo et avis avec avatar, nom et lien, lien vers Google Maps) ;
-   - export (export vrai) : aucun contenu Google ; emplacements « Vos photos ici », « Vos avis clients ».
+   - export (export vrai) : aucun contenu Google ; photos importées par le vendeur ou photos d'illustration
+     libres de droits, emplacement « Vos avis clients ». Une photo Google n'est jamais affichée à l'export.
 #}
 
 {% macro google_maps(clair=false) -%}
@@ -11,7 +12,7 @@
 {%- endmacro %}
 
 {% macro image(photo, largeur, alt="", classe="") -%}
-  {% if export or photo is none %}
+  {% if photo is none or (export and not photo.libre) %}
     <div class="photo emplacement-photo {{ classe }}" role="img" aria-label="{{ t.vos_photos }}"><span>{{ t.vos_photos }}</span></div>
   {% else %}
     <img class="photo {{ classe }}" src="{{ url_photo(photo.nom, largeur) }}" alt="{{ alt }}" loading="lazy">
@@ -30,7 +31,8 @@
 
 {# Crédit posé sur une grande photo (en-tête) #}
 {% macro credit_photo(photo) -%}
-  {% if not export and photo is not none and photo.auteurs %}<span class="credit-photo">{{ auteur_photo(photo) }}</span>{% endif %}
+  {% if not export and photo is not none and photo.auteurs %}<span class="credit-photo">{{ auteur_photo(photo) }}</span>
+  {%- elif photo is not none and photo.illustration %}<span class="credit-photo">{{ t.illustration }}</span>{% endif %}
 {%- endmacro %}
 
 {% macro section_a_propos(clair) %}

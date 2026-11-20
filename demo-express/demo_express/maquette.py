@@ -6,8 +6,9 @@ son ordre de sections. Les retouches de l'utilisateur (Options) remplacent les v
 Deux usages, selon les règles de Google Maps Platform (pas d'export du contenu Google hors de l'application) :
   - aperçu dans l'application : fiche Google en direct, avec les crédits exigés ;
   - export (images, PDF, page web envoyés au prospect) : aucun contenu Google. Seules les informations
-    d'identité vérifiées par le vendeur (Identite) et ses propres textes y figurent ; photos et avis sont
-    remplacés par des emplacements « Vos photos ici », « Vos avis clients ».
+    d'identité vérifiées par le vendeur (Identite), ses propres textes et des photos utilisables y figurent :
+    photos importées par le vendeur, sinon photos d'illustration libres de droits (photos.py). Les avis sont
+    remplacés par un emplacement « Vos avis clients ».
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from urllib.parse import quote
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from demo_express import photos as phototheque
 from demo_express.familles import FAMILLES, Famille, famille_de
 from demo_express.langue import MOIS, langue_courante, nombre
 from demo_express.places import Fiche
@@ -58,6 +60,8 @@ TEXTES = {
         "avis": "avis",
         "credits": "Informations, photos et avis :",
         "credits_export": "Maquette à compléter avec vos photos, vos avis et vos horaires",
+        "illustrations": "Photos d'illustration",
+        "illustration": "Photo d'illustration",
         "realise": "Maquette réalisée avec Démo Express",
         "horaires_absents": "Horaires communiqués sur demande.",
         "selection_avis": "3 avis avec commentaire, parmi les plus pertinents selon",
@@ -89,6 +93,8 @@ TEXTES = {
         "avis": "reviews",
         "credits": "Information, photos and reviews:",
         "credits_export": "Mockup to be completed with your photos, reviews and opening hours",
+        "illustrations": "Illustrative photos",
+        "illustration": "Illustrative photo",
         "realise": "Mockup made with Démo Express",
         "horaires_absents": "Opening hours available on request.",
         "selection_avis": "3 reviews with comments, among the most relevant according to",
@@ -145,21 +151,23 @@ class Identite:
     metier: str = ""
     ville: str = ""
     telephone: str = ""
+    adresse: str = ""  # adresse complète (rue, code postal, ville)
 
     def nettoyer(self) -> "Identite":
         self.nom, self.metier, self.ville = (x.strip()[:80] for x in (self.nom, self.metier, self.ville))
+        self.adresse = " ".join(self.adresse.split())[:160]
         self.telephone = "".join(c for c in self.telephone if c.isdigit() or c in "+ .()-")[:30].strip()
         return self
 
 
-NOMBRE_EMPLACEMENTS = 8  # photos de l'export (emplacements « Vos photos ici »)
+NOMBRE_EMPLACEMENTS = 8  # photos de la maquette, au plus
 
 
 def fiche_export(fiche: Fiche, identite: Identite) -> Fiche:
     """Fiche sans aucun contenu Google : identité vérifiée par le vendeur, le reste vide."""
     return replace(
-        fiche, nom=identite.nom, metier=identite.metier, ville=identite.ville, adresse=identite.ville,
-        adresse_courte=identite.ville, telephone=identite.telephone, telephone_international="", horaires=[],
+        fiche, nom=identite.nom, metier=identite.metier, ville=identite.ville,
+        adresse=identite.adresse or identite.ville, adresse_courte=identite.ville, telephone=identite.telephone, telephone_international="", horaires=[],
         note=None, nombre_avis=0, avis=[], photos=[], lien_maps="", site="",
     )
 
@@ -181,21 +189,45 @@ def famille_retenue(fiche: Fiche, options: Options | None = None) -> Famille:
     return famille_de(fiche.type_principal, fiche.types, fiche.metier)
 
 
+def photos_proposees(fiche: Fiche, famille: Famille, importees: list | None = None) -> list:
+    """Toutes les photos que le vendeur peut choisir : importées, Google (aperçu seulement), illustrations."""
+    return [*(importees or []), *fiche.photos, *phototheque.bibliotheque(famille.code)]
+
+
+def photos_retenues(fiche: Fiche, options: Options, famille: Famille, importees: list | None, export: bool) -> list:
+    """Photos de la maquette, dans l'ordre (la première sert de grande photo d'accueil).
+
+    Par défaut : photos importées puis photos Google ; sans aucune photo, les illustrations du métier.
+    Export : chaque photo Google est remplacée par une illustration du métier (ou un emplacement « Vos photos
+    ici » s'il n'en reste plus) ; par défaut, photos importées puis illustrations.
+    """
+    importees = importees or []
+    biblio = phototheque.bibliotheque(famille.code)
+    if options.photos is None:
+        choisies = [*importees, *([] if export else fiche.photos)] or biblio
+        if export:  # photothèque vide (ou absente) : emplacements « Vos photos ici »
+            choisies = [*choisies, *(b for b in biblio if b not in choisies)] or [None] * NOMBRE_EMPLACEMENTS
+    else:
+        par_nom = {p.nom: p for p in [*importees, *fiche.photos]}
+        choisies = [p for p in (par_nom.get(n) or phototheque.photo_bibliotheque(n) for n in options.photos) if p]
+    choisies = choisies[:NOMBRE_EMPLACEMENTS]
+    if export:
+        reserve = [b for b in biblio if b not in choisies]
+        choisies = [p if p is not None and getattr(p, "libre", False) else (reserve.pop(0) if reserve else None) for p in choisies]
+    return choisies
+
+
 def contexte(fiche: Fiche, options: Options | None = None, url_photo: Callable[..., str] = url_photo_apercu,
-             identite: Identite | None = None) -> dict:
-    """identite donnée : contexte d'export (aucun contenu Google), sinon aperçu en direct."""
+             identite: Identite | None = None, importees: list | None = None) -> dict:
+    """identite donnée : contexte d'export (aucun contenu Google), sinon aperçu en direct.
+    importees : photos importées par le vendeur pour cette entreprise (photos.PhotoLibre)."""
     options = (options or Options()).nettoyer()
     langue = langue_courante()
     famille = famille_retenue(fiche, options)
     export = identite is not None
-    photos = fiche.photos
-    if options.photos is not None:
-        par_nom = {p.nom: p for p in fiche.photos}
-        photos = [par_nom[n] for n in options.photos if n in par_nom]
+    photos = photos_retenues(fiche, options, famille, importees, export)
     avec_avis = bool(fiche.avis)
     if export:
-        # Autant d'emplacements que de photos retenues (8 au plus), pour garder la même mise en page
-        photos = [None] * (min(len(photos), NOMBRE_EMPLACEMENTS) if options.photos is not None else NOMBRE_EMPLACEMENTS)
         fiche = fiche_export(fiche, identite.nettoyer())
         avec_avis = True
     valeurs = {"nom": fiche.nom, "ville": fiche.ville or fiche.adresse_courte, "metier": fiche.metier}
@@ -220,6 +252,7 @@ def contexte(fiche: Fiche, options: Options | None = None, url_photo: Callable[.
         "atouts": famille.atouts[langue],
         "couleur": options.couleur or famille.couleur,
         "photos": photos,
+        "illustrations": any(getattr(p, "illustration", False) for p in photos),
         "sections": sections,
         "url_photo": url_photo,
         "note": nombre(f"{fiche.note:.1f}") if fiche.note else "",
@@ -230,6 +263,6 @@ def contexte(fiche: Fiche, options: Options | None = None, url_photo: Callable[.
 
 
 def rendre(fiche: Fiche, options: Options | None = None, url_photo: Callable[..., str] = url_photo_apercu,
-           identite: Identite | None = None) -> str:
-    ctx = contexte(fiche, options, url_photo, identite)
+           identite: Identite | None = None, importees: list | None = None) -> str:
+    ctx = contexte(fiche, options, url_photo, identite, importees)
     return _environnement().get_template(f"maquette/{ctx['famille'].code}.html").render(**ctx)

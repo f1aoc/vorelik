@@ -59,6 +59,12 @@ def isolation(tmp_path, monkeypatch):
     monkeypatch.setenv("DEMO_LANGUE", "fr")
     monkeypatch.setenv("DEMO_SANS_LICENCE", "1")  # licence testée à part (test_licence.py)
     monkeypatch.delenv("GOOGLE_MAPS_API_KEY", raising=False)
+    # Photothèque vide par défaut (emplacements « Vos photos ici ») ; test_photos.py en installe une factice
+    from demo_express import photos
+    monkeypatch.setattr(photos, "DOSSIER", tmp_path / "phototheque-vide")
+    photos.catalogue.cache_clear()
+    yield
+    photos.catalogue.cache_clear()
 
 
 @pytest.fixture

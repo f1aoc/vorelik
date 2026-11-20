@@ -17,6 +17,7 @@ dependencies = [
     "python-multipart>=0.0.9",
     "cryptography>=41",
     "playwright>=1.45",
+    "Pillow>=10",
 ]
 
 [project.optional-dependencies]
@@ -29,7 +30,7 @@ demo-express = "demo_express.__main__:main"
 include = ["demo_express*"]
 
 [tool.setuptools.package-data]
-demo_express = ["langues/*.yaml", "templates/**/*.html", "static/*"]
+demo_express = ["langues/*.yaml", "templates/**/*.html", "static/*", "photos/catalogue.json", "photos/*/*.jpg"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

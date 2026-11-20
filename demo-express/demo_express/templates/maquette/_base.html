@@ -141,7 +141,7 @@
   <footer class="pied">
     <div class="conteneur">
       <span>© <strong>{{ fiche.nom }}</strong></span>
-      <span>{% if export %}{{ t.credits_export }}{% else %}{{ t.credits }} {{ m.google_maps(true) }}{% endif %} · {{ t.realise }}</span>
+      <span>{% if export %}{{ t.credits_export }}{% else %}{{ t.credits }} {{ m.google_maps(true) }}{% endif %}{% if illustrations %} · {{ t.illustrations }}{% endif %} · {{ t.realise }}</span>
     </div>
   </footer>
 </body>

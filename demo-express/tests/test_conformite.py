@@ -74,7 +74,7 @@ def test_date_de_visite_en_anglais(monkeypatch):
 
 # --- Export -------------------------------------------------------------------------------------------------
 
-IDENTITE = maquette.Identite("Boulangerie Martin", "Boulangerie", "Lyon", "04 78 00 00 00")
+IDENTITE = maquette.Identite("Boulangerie Martin", "Boulangerie", "Lyon", "04 78 00 00 00", "8 place Bellecour, 69005 Lyon")
 CONTENU_GOOGLE = ["/photo?", "googleusercontent", "google.com/maps", "maps.google.com", "Le meilleur pain", "Croissants",
                   "Good bread", "Julie", "Paul", "4,7", "128", "07:00", "République", "69002", "Auteur 0", "Google Maps"]
 
@@ -85,6 +85,7 @@ def test_export_sans_aucun_contenu_google(code):
     for interdit in CONTENU_GOOGLE:
         assert interdit not in page, interdit
     assert "Boulangerie Martin" in page and "Lyon" in page and 'href="tel:0478000000"' in page
+    assert "8 place Bellecour, 69005 Lyon" in page  # adresse vérifiée par le vendeur
     assert "Vos photos ici" in page and "Vos horaires d&#39;ouverture" in page
     assert "Maquette à compléter avec vos photos" in page and "Maquette de démonstration" in page
 

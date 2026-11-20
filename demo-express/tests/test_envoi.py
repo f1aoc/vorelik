@@ -14,7 +14,10 @@ from demo_express import capture, maquette, messages
 from demo_express.familles import FAMILLES
 from demo_express.web import creer_app
 from conftest import PLACE_ID
-from test_conformite import CONTENU_GOOGLE
+from test_conformite import CONTENU_GOOGLE as _TOUT
+
+# L'identité (nom, téléphone, adresse) est préremplie depuis la fiche puis vérifiée par le vendeur : l'adresse est autorisée
+CONTENU_GOOGLE = [x for x in _TOUT if x not in ("République", "69002")]
 
 PNG, PDF = b"\x89PNG\r\n\x1a\n", b"%PDF"
 
@@ -76,6 +79,7 @@ def test_message_en_anglais(monkeypatch):
 def test_page_envoyer(client, google):
     page = html.unescape(client.get(f"/demo/{PLACE_ID}/envoyer").text)
     assert 'value="Boulangerie Martin"' in page and 'value="04 78 00 00 00"' in page and 'value="Lyon"' in page
+    assert 'value="12 Rue de la République, 69002 Lyon, France"' in page  # adresse complète proposée
     assert "Une idée de site internet pour Boulangerie Martin" in page and "Camille Durand" in page
     assert f'src="/maquette/{PLACE_ID}?export=1"' in page and "interdisent de copier" in page
     assert f'href="/demo/{PLACE_ID}/envoyer"' in client.get(f"/demo/{PLACE_ID}").text
@@ -91,10 +95,11 @@ def test_maquette_d_export_sans_contenu_google(client, google):
 
 def test_identite_modifiee_par_le_vendeur(client, google):
     client.get(f"/demo/{PLACE_ID}/envoyer")
-    r = client.post(f"/demo/{PLACE_ID}/identite", data={"nom": "Maison Martin", "metier": "Boulangerie", "ville": "Lyon 2e", "telephone": "04 72 11 22 33"})
+    r = client.post(f"/demo/{PLACE_ID}/identite", data={"nom": "Maison Martin", "metier": "Boulangerie", "ville": "Lyon 2e", "telephone": "04 72 11 22 33",
+                                                     "adresse": "3 rue Mercière, 69005 Lyon"})
     assert r.status_code == 200 and r.json()["objet"] == "Une idée de site internet pour Maison Martin"
     page = client.get(f"/maquette/{PLACE_ID}", params={"export": 1}).text
-    assert "Maison Martin" in page and "Lyon 2e" in page and 'href="tel:0472112233"' in page
+    assert "Maison Martin" in page and "Lyon 2e" in page and 'href="tel:0472112233"' in page and "3 rue Mercière, 69005 Lyon" in page
     vide = client.post(f"/demo/{PLACE_ID}/identite", data={"nom": "  "})
     assert vide.status_code == 400 and "nom" in vide.json()["erreur"]
 

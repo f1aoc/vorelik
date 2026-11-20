@@ -3,7 +3,7 @@
 {% block contenu %}
   <p class="fil"><a href="/demo/{{ fiche.id }}">← {{ _("Retour aux retouches") }}</a></p>
   <h1>{{ _("Envoyer la maquette à") }} {{ fiche.nom }}</h1>
-  <p class="alerte">{{ _("Les règles de Google interdisent de copier ses photos, avis, notes et horaires hors de l'application. Les fichiers envoyés au prospect les remplacent donc par des emplacements « Vos photos ici ». Pour montrer les vraies photos, présentez l'aperçu en rendez-vous ou en partage d'écran.") }}</p>
+  <p class="alerte">{{ _("Les règles de Google interdisent de copier ses photos, avis, notes et horaires hors de l'application. Dans les fichiers envoyés au prospect, les photos Google sont donc remplacées par vos photos importées ou par des photos d'illustration libres de droits. Pour montrer les vraies photos, présentez l'aperçu en rendez-vous ou en partage d'écran.") }}</p>
 
   <div class="envoi">
     <div class="envoi-gauche">
@@ -14,6 +14,7 @@
         <label for="metier">{{ _("Métier") }}</label><input id="metier" name="metier" value="{{ identite.metier }}" maxlength="80">
         <label for="ville">{{ _("Ville") }}</label><input id="ville" name="ville" value="{{ identite.ville }}" maxlength="80">
         <label for="telephone">{{ _("Téléphone") }}</label><input id="telephone" name="telephone" value="{{ identite.telephone }}" maxlength="30">
+        <label for="adresse">{{ _("Adresse") }}</label><input id="adresse" name="adresse" value="{{ identite.adresse }}" maxlength="160">
         <p class="etat-enregistrement" id="etat-identite" aria-live="polite"></p>
       </form>
 

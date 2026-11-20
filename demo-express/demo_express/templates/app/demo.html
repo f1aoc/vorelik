@@ -68,25 +68,30 @@
       <fieldset>
         <legend>{{ _("Photos") }}</legend>
         <input type="hidden" name="photos_choisies" value="1">
-        {% if photos %}
-          <p class="petit">{{ _("La première sert de grande photo d'accueil. Cochez, décochez, changez l'ordre.") }}</p>
-          <ol class="photos" id="photos">
-            {% for p, choisie in photos %}
-              <li class="photo">
-                <label>
-                  <input type="checkbox" name="photos" value="{{ p.nom }}" {% if choisie %}checked{% endif %}>
-                  <img src="/photo?nom={{ p.nom|urlencode }}&largeur=240" alt="" loading="lazy" width="96" height="72">
-                </label>
-                <span class="ordre">
-                  <button type="button" data-deplacer="-1" aria-label="{{ _('Monter') }}">↑</button>
-                  <button type="button" data-deplacer="1" aria-label="{{ _('Descendre') }}">↓</button>
-                </span>
-              </li>
-            {% endfor %}
-          </ol>
-        {% else %}
-          <p class="petit">{{ _("Cette fiche Google n'a pas de photo.") }}</p>
-        {% endif %}
+        <div class="import-photos">
+          <label class="bouton bouton-discret" for="fichiers-photos">{{ _("Importer des photos") }}</label>
+          <input id="fichiers-photos" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+          <span class="petit" id="etat-import" role="status"></span>
+        </div>
+        <p class="petit">{{ _("Les photos Google ne s'affichent que dans l'aperçu : dans les fichiers envoyés, elles sont remplacées par vos photos importées ou par des photos d'illustration libres de droits.") }}</p>
+        <p class="petit">{{ _("La première sert de grande photo d'accueil. Cochez, décochez, changez l'ordre.") }}</p>
+        <ol class="photos" id="photos">
+          {% for p, choisie in photos %}
+            {% set origine = "import" if p.nom.startswith("import/") else ("illustration" if p.illustration else "google") %}
+            <li class="photo">
+              <label>
+                <input type="checkbox" name="photos" value="{{ p.nom }}" {% if choisie %}checked{% endif %}>
+                <img src="/photo?nom={{ p.nom|urlencode }}&largeur=240" alt="" loading="lazy" width="96" height="72">
+                <span class="origine origine-{{ origine }}">{{ {"import": _("Importée"), "illustration": _("Illustration"), "google": _("Google · aperçu")}[origine] }}</span>
+              </label>
+              <span class="ordre">
+                <button type="button" data-deplacer="-1" aria-label="{{ _('Monter') }}">↑</button>
+                <button type="button" data-deplacer="1" aria-label="{{ _('Descendre') }}">↓</button>
+                {% if origine == "import" %}<button type="button" data-retirer="{{ p.nom }}" aria-label="{{ _('Retirer cette photo') }}">✕</button>{% endif %}
+              </span>
+            </li>
+          {% endfor %}
+        </ol>
       </fieldset>
 
       <fieldset>
@@ -150,6 +155,7 @@
       }
     }
     formulaire.addEventListener("input", (e) => {
+      if (e.target.type === "file") return;  // import de photos : géré à part (envoi puis rechargement)
       if (e.target.id === "couleur-libre") {
         // Couleur libre : sélectionne une pastille temporaire portant cette valeur
         let libre = formulaire.querySelector("input[name=couleur][data-libre]");
@@ -170,7 +176,33 @@
         enregistrer(true);
       }
     });
-    document.getElementById("photos")?.addEventListener("click", (e) => {
+    // Photos importées : envoi au fil de l'eau, puis rechargement de l'atelier
+    document.getElementById("fichiers-photos").addEventListener("change", async (e) => {
+      const fichiers = [...e.target.files];
+      if (!fichiers.length) return;
+      const etat = document.getElementById("etat-import");
+      etat.textContent = {{ _("Import en cours…")|tojson }};
+      const donnees = new FormData();
+      fichiers.forEach((f) => donnees.append("photos", f));
+      try {
+        const r = await fetch("/demo/{{ fiche.id }}/photos", { method: "POST", body: donnees });
+        const resultat = await r.json();
+        if (resultat.erreurs?.length && !resultat.ajoutees?.length) { etat.textContent = resultat.erreurs.join(" · "); return; }
+        if (resultat.erreurs?.length) try { sessionStorage.setItem("erreurs-import", resultat.erreurs.join(" · ")); } catch {}
+        location.reload();  // les nouvelles photos sont placées en tête par l'application
+      } catch { etat.textContent = {{ _("L'import a échoué : réessayez.")|tojson }}; }
+    });
+    try {
+      const erreurs = sessionStorage.getItem("erreurs-import");
+      if (erreurs) { document.getElementById("etat-import").textContent = erreurs; sessionStorage.removeItem("erreurs-import"); }
+    } catch {}
+    document.getElementById("photos")?.addEventListener("click", async (e) => {
+      const retirer = e.target.closest("[data-retirer]");
+      if (retirer) {
+        await fetch("/demo/{{ fiche.id }}/photos/retirer", { method: "POST", body: new URLSearchParams({ nom: retirer.dataset.retirer }) });
+        location.reload();
+        return;
+      }
       const bouton = e.target.closest("[data-deplacer]");
       if (!bouton) return;
       const li = bouton.closest("li");

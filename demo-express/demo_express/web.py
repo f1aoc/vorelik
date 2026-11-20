@@ -32,6 +32,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from demo_express import __version__, capture, maquette, messages, places
+from demo_express import photos as phototheque
 from demo_express import licence as lic
 from demo_express.familles import FAMILLES
 from demo_express.langue import AUTO, _, langue_courante
@@ -105,6 +106,7 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None, capturer: Capt
     images: Memoire = Memoire(120)
     identites: dict[str, maquette.Identite] = {}  # vérifiées par le vendeur, pour l'export
     exports: Memoire = Memoire(5)  # (entreprise, empreinte de la maquette) → Captures
+    importees = phototheque.Imports()  # photos importées par le vendeur, par entreprise
 
     def page(nom: str, request: Request, statut: int = 200, **valeurs) -> HTMLResponse:
         html = env.get_template(f"app/{nom}.html").render(request=request, langue=langue_courante(), **valeurs)
@@ -145,10 +147,14 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None, capturer: Capt
         except places.ErreurPlaces as e:
             return page("accueil", request, statut=502, q="", candidats=[], erreur=str(e), sans_cle=not cle())
         options = retouches.get(place_id, maquette.Options())
-        ctx = maquette.contexte(fiche, options)
-        choisies = [p.nom for p in ctx["photos"]]
+        ctx = maquette.contexte(fiche, options, importees=importees.liste(place_id))
+        choisies = [p.nom for p in ctx["photos"] if p is not None]
         # Photos : celles retenues dans leur ordre, puis les autres (décochées)
-        photos = [(p, p.nom in choisies) for p in sorted(fiche.photos, key=lambda p: choisies.index(p.nom) if p.nom in choisies else 99)]
+        proposees = maquette.photos_proposees(fiche, ctx["famille"], importees.liste(place_id))
+        for nom in choisies:  # illustration d'un autre modèle, retenue avant un changement de modèle
+            if nom not in {p.nom for p in proposees} and (p := phototheque.photo_bibliotheque(nom)):
+                proposees.append(p)
+        photos = [(p, p.nom in choisies) for p in sorted(proposees, key=lambda p: choisies.index(p.nom) if p.nom in choisies else 99)]
         langue = langue_courante()
         return page("demo", request, fiche=fiche, ctx=ctx, photos=photos, retouche=place_id in retouches,
                     modeles=[(f.code, f.modele[langue], f.nom[langue]) for f in FAMILLES.values()],
@@ -162,7 +168,7 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None, capturer: Capt
         formulaire = await request.form()
         options = options_du_formulaire(formulaire)
         # Valeurs identiques à celles du modèle : non retenues (elles suivront un changement de modèle)
-        defaut = maquette.contexte(fiches[place_id], maquette.Options(modele=options.modele))
+        defaut = maquette.contexte(fiches[place_id], maquette.Options(modele=options.modele), importees=importees.liste(place_id))
         for champ in ("accroche", "presentation", "action", "couleur"):
             if getattr(options, champ) == defaut[champ]:
                 setattr(options, champ, "")
@@ -186,22 +192,63 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None, capturer: Capt
             return HTMLResponse(f"<p style='font-family:sans-serif;padding:24px'>{e}</p>", status_code=502)
         if export:
             return HTMLResponse(html_export(place_id), headers={"Cache-Control": "no-store"})
-        return HTMLResponse(maquette.rendre(fiche, retouches.get(place_id)), headers={"Cache-Control": "no-store"})
+        return HTMLResponse(maquette.rendre(fiche, retouches.get(place_id), importees=importees.liste(place_id)),
+                            headers={"Cache-Control": "no-store"})
+
+    # --- Photos importées par le vendeur ------------------------------------------------------------------
+
+    @app.post("/demo/{place_id}/photos")
+    async def importer_photos(request: Request, place_id: str):
+        if not meme_origine(request):
+            return Response(status_code=403)
+        if place_id not in fiches:
+            return Response(status_code=404)
+        formulaire = await request.form(max_files=phototheque.MAX_IMPORTS, max_fields=20)
+        ajoutees, erreurs = [], []
+        for envoi in formulaire.getlist("photos"):
+            if not hasattr(envoi, "read"):
+                continue
+            donnees = await envoi.read(phototheque.TAILLE_MAX + 1)
+            try:
+                ajoutees.append(importees.ajouter(place_id, donnees).nom)
+            except phototheque.ErreurImport as e:
+                erreurs.append(f"{envoi.filename or 'photo'} : {_(str(e))}")
+        options = retouches.get(place_id)
+        if ajoutees and options is not None and options.photos is not None:
+            options.photos = ajoutees + options.photos  # nouvelles photos en tête de la sélection
+        return JSONResponse({"ajoutees": ajoutees, "erreurs": erreurs}, status_code=200 if ajoutees or not erreurs else 400)
+
+    @app.post("/demo/{place_id}/photos/retirer")
+    async def retirer_photo(request: Request, place_id: str, nom: str = Form("")):
+        if not meme_origine(request):
+            return Response(status_code=403)
+        if not importees.retirer(place_id, nom):
+            return Response(status_code=404)
+        options = retouches.get(place_id)
+        if options is not None and options.photos is not None:
+            options.photos = [n for n in options.photos if n != nom]
+        return Response(status_code=204)
 
     # --- Envoi au prospect (B : fichiers sans contenu Google, C : message) ------------------------------------
 
     def identite_de(place_id: str) -> maquette.Identite:
         if place_id not in identites:
             f = fiches[place_id]
-            identites[place_id] = maquette.Identite(f.nom, f.metier, f.ville, f.telephone).nettoyer()
+            identites[place_id] = maquette.Identite(f.nom, f.metier, f.ville, f.telephone, f.adresse).nettoyer()
         return identites[place_id]
 
+    def photo_integree(nom: str, largeur: int = 0) -> str:
+        """Export : photo intégrée à la page (importée ou d'illustration ; jamais une photo Google)."""
+        contenu = importees.contenu(nom) if nom.startswith(phototheque.IMPORT) else phototheque.contenu_bibliotheque(nom)
+        return phototheque.uri(contenu) if contenu else ""
+
     def html_export(place_id: str) -> str:
-        return maquette.rendre(fiches[place_id], retouches.get(place_id), identite=identite_de(place_id))
+        return maquette.rendre(fiches[place_id], retouches.get(place_id), photo_integree, identite=identite_de(place_id),
+                               importees=importees.liste(place_id))
 
     def message_de(place_id: str) -> messages.Message:
         fiche, identite = fiches[place_id], identite_de(place_id)
-        ctx = maquette.contexte(fiche, retouches.get(place_id), identite=identite)
+        ctx = maquette.contexte(fiche, retouches.get(place_id), identite=identite, importees=importees.liste(place_id))
         return messages.rediger(identite.nom, identite.ville, ctx["famille"], ctx["action"], bool(fiche.site), reglages.vendeur)
 
     def nom_de_fichier(place_id: str) -> str:
@@ -224,7 +271,8 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None, capturer: Capt
         if place_id not in fiches:
             return Response(status_code=404)
         f = await request.form()
-        identite = maquette.Identite(f.get("nom", ""), f.get("metier", ""), f.get("ville", ""), f.get("telephone", "")).nettoyer()
+        identite = maquette.Identite(f.get("nom", ""), f.get("metier", ""), f.get("ville", ""), f.get("telephone", ""),
+                                     f.get("adresse", "")).nettoyer()
         if not identite.nom:
             return JSONResponse({"erreur": _("Indiquez le nom de l'entreprise.")}, status_code=400)
         identites[place_id] = identite
@@ -278,6 +326,11 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None, capturer: Capt
 
     @app.get("/photo")
     async def photo(nom: str, largeur: int = 1600):
+        if nom.startswith((phototheque.BIBLIO, phototheque.IMPORT)):
+            contenu = importees.contenu(nom) if nom.startswith(phototheque.IMPORT) else phototheque.contenu_bibliotheque(nom)
+            if contenu is None:
+                return Response(status_code=404)
+            return Response(contenu, media_type=phototheque.type_mime(contenu), headers={"Cache-Control": "private, max-age=3600"})
         cle_cache = (nom, largeur)
         if cle_cache not in images:
             try:

@@ -22,9 +22,11 @@ donnees = [
     (str(RACINE / "demo_express" / "templates"), "demo_express/templates"),
     (str(RACINE / "demo_express" / "static"), "demo_express/static"),
     (str(RACINE / "demo_express" / "langues"), "demo_express/langues"),
+    (str(RACINE / "demo_express" / "photos"), "demo_express/photos"),  # photothèque d'illustration (CC0)
 ]
 
-caches = collect_submodules("uvicorn") + collect_submodules("demo_express") + ["multipart", "python_multipart"]
+caches = collect_submodules("uvicorn") + collect_submodules("demo_express") + ["multipart", "python_multipart",
+          "PIL.Image", "PIL.ImageOps", "PIL.JpegImagePlugin", "PIL.PngImagePlugin", "PIL.WebPImagePlugin"]
 
 a = Analysis(
     [str(RACINE / "packaging" / "lancer.py")],

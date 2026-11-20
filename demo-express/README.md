@@ -24,7 +24,11 @@ Les conditions propres à l'Espace économique européen n'ont pas été lues : 
 - Uniquement l'API officielle Google Places (« New »), avec la clé du client : aucun scraping.
 - **Pas d'export du contenu Google** : fiches et photos gardées en mémoire le temps de la session, jamais sur le
   disque ; les fichiers envoyés au prospect (images, PDF, page web) ne contiennent ni photo, ni avis, ni note, ni
-  horaires, ni adresse Google — emplacements « Vos photos ici » et identité vérifiée par le vendeur.
+  horaires Google. On y trouve l'identité vérifiée par le vendeur (nom, métier, ville, téléphone, adresse complète)
+  et des photos utilisables : celles que le vendeur importe (réduites à 1600 px, sans métadonnées, gardées en
+  mémoire) ou, à défaut, des **photos d'illustration** libres de droits (licence CC0, banque StockSnap trouvée via Openverse),
+  6 familles × 8 photos, livrées avec l'application (`demo_express/photos/`, source et licence de chaque photo dans
+  `catalogue.json`), signalées par la mention « Photos d'illustration ».
 - Aperçu en direct : mention « Google Maps » au format exigé (Roboto ou sans-serif, 400, #5E5E5E ou blanc,
   13 px, sur une ligne, `translate="no"`) près de la note, des photos, des avis et des horaires ; auteur de chaque
   photo et avis (avatar, nom, lien) ; lien vers chaque photo et avis sur Google Maps ; date relative ; **date de
