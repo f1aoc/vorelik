@@ -93,6 +93,10 @@ def test_photo(google):
 @pytest.mark.parametrize("texte, attendu", [
     ("DELPHINE FLEURS 22 Route Nationale 7, 13670 Saint-Andiol", "DELPHINE FLEURS Saint-Andiol"),
     ("Garage Dupont 4 rue des Lilas, 44000 Nantes", "Garage Dupont Nantes"),
+    ("Delphine Fleurs 22 Route Nationale 7, 13670 Saint-Andiol, France", "Delphine Fleurs Saint-Andiol"),
+    ("Rose Florist 22 Main Street, Springfield, IL 62701", "Rose Florist Springfield"),
+    ("Rose Florist 22 Main Street, Springfield, IL 62701, USA", "Rose Florist Springfield"),
+    ("Smith Garage 10 High Street, London SW1A 2AA", "Smith Garage London"),
     ("Boulangerie Martin Lyon", ""),
     ("22 Route Nationale 7, 13670 Saint-Andiol", ""),
 ])

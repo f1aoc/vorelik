@@ -67,12 +67,25 @@ def est_adresse_seule(fiche: "Fiche") -> bool:
     return not fiche.type_principal and not fiche.metier and any(t in TYPES_ADRESSE for t in fiche.types)
 
 
+PAYS = {"france", "belgique", "belgium", "suisse", "switzerland", "luxembourg", "canada", "usa", "us",
+        "united states", "united states of america", "uk", "united kingdom", "england", "ireland", "australia",
+        "new zealand"}
+
+
 def sans_adresse(texte: str) -> str:
-    """« Delphine Fleurs 22 Route Nationale 7, 13670 Saint-Andiol » → « Delphine Fleurs Saint-Andiol »."""
+    """Nom + ville, sans numéro ni rue :
+    « Delphine Fleurs 22 Route Nationale 7, 13670 Saint-Andiol » → « Delphine Fleurs Saint-Andiol » ;
+    « Rose Florist 22 Main Street, Springfield, IL 62701 » → « Rose Florist Springfield »."""
     if not re.search(r"\d", texte):
         return ""
     nom = re.split(r"\d", texte, maxsplit=1)[0].strip(" ,-–")
-    ville = re.sub(r"[\d]+", "", texte.rsplit(",", 1)[1]).strip(" ,-–") if "," in texte else ""
+    ville = ""
+    for morceau in reversed(texte.split(",")[1:]):  # la ville : dernier morceau qui n'est ni pays, ni état, ni code
+        mots = [m for m in morceau.split() if not re.search(r"\d", m)]
+        candidat = " ".join(mots).strip(" -–")
+        if len(candidat) > 2 and candidat.lower() not in PAYS:
+            ville = candidat
+            break
     return f"{nom} {ville}".strip() if nom else ""
 
 
