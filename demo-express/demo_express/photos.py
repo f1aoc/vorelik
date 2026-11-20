@@ -68,8 +68,35 @@ def catalogue() -> dict[str, Entree]:
     return {f"{BIBLIO}{x['famille']}/{x['fichier']}": Entree(**x) for x in lignes}
 
 
+# Thèmes de photos propres à certains métiers (la mise en page reste celle de la famille). Sans thème
+# particulier, les photos sont celles de la famille de métier.
+THEMES_TYPES = {
+    "garage": "car_repair car_wash car_dealer auto_parts_store tire_shop",
+    "fleuriste": "florist",
+    "immobilier": "real_estate_agency",
+}
+THEMES_MOTS = {
+    "garage": ("garage", "mécani", "carross", "automobile", "pneu", "auto ", "car repair", "mechanic", "body shop"),
+    "fleuriste": ("fleur", "florist", "flower"),
+    "immobilier": ("immobili", "real estate", "realtor", "estate agent"),
+}
+
+
+def theme_de(type_principal: str, types: list[str] | None = None, metier: str = "") -> str:
+    """Thème de photos d'un métier (« garage », « fleuriste », « immobilier ») ; "" si aucun."""
+    for t in [type_principal, *(types or [])]:
+        for theme, liste in THEMES_TYPES.items():
+            if t in liste.split():
+                return theme
+    libelle = f"{metier.lower()} "
+    for theme, mots in THEMES_MOTS.items():
+        if any(m in libelle for m in mots):
+            return theme
+    return ""
+
+
 def bibliotheque(famille: str) -> list[PhotoLibre]:
-    """Photos d'illustration d'une famille de métier, dans l'ordre du catalogue."""
+    """Photos d'illustration d'un thème ou d'une famille de métier, dans l'ordre du catalogue."""
     return [PhotoLibre(nom, e.largeur, e.hauteur, True) for nom, e in catalogue().items() if e.famille == famille]
 
 

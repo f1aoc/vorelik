@@ -27,7 +27,7 @@ Les conditions propres à l'Espace économique européen n'ont pas été lues : 
   horaires Google. On y trouve l'identité vérifiée par le vendeur (nom, métier, ville, téléphone, adresse complète)
   et des photos utilisables : celles que le vendeur importe (réduites à 1600 px, sans métadonnées, gardées en
   mémoire) ou, à défaut, des **photos d'illustration** libres de droits (licence CC0, banque StockSnap trouvée via Openverse),
-  6 familles × 8 photos, livrées avec l'application (`demo_express/photos/`, source et licence de chaque photo dans
+  8 photos par famille de métier, plus des thèmes garage, fleuriste et immobilier (72 photos), livrées avec l'application (`demo_express/photos/`, source et licence de chaque photo dans
   `catalogue.json`), signalées par la mention « Photos d'illustration ».
 - Aperçu en direct : mention « Google Maps » au format exigé (Roboto ou sans-serif, 400, #5E5E5E ou blanc,
   13 px, sur une ligne, `translate="no"`) près de la note, des photos, des avis et des horaires ; auteur de chaque

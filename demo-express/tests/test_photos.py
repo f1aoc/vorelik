@@ -41,7 +41,7 @@ def phototheque(tmp_path, monkeypatch):
 
 def test_phototheque_livree_complete_et_libre_de_droits():
     lignes = json.loads((REEL / "catalogue.json").read_text(encoding="utf-8"))
-    for famille in FAMILLES:
+    for famille in [*FAMILLES, *photos.THEMES_TYPES]:
         assert sum(x["famille"] == famille for x in lignes) >= 6, famille
     for x in lignes:
         assert x["licence"].startswith(LICENCES_LIBRES), x
@@ -172,3 +172,30 @@ def test_illustration_choisie_dans_l_atelier(client, google, phototheque):
 @pytest.mark.parametrize("nom", ["biblio/../catalogue.json", "biblio/bouche/../../secret", "biblio/bouche/9.jpg", "import/inconnu"])
 def test_photo_hors_catalogue_introuvable(client, phototheque, nom):
     assert client.get("/photo", params={"nom": nom}).status_code == 404
+
+
+@pytest.mark.parametrize("type_principal, metier, theme", [
+    ("car_repair", "", "garage"), ("", "Garage automobile", "garage"), ("", "Carrosserie Dupont", "garage"),
+    ("florist", "", "fleuriste"), ("", "Artisan fleuriste", "fleuriste"),
+    ("real_estate_agency", "", "immobilier"), ("", "Agence immobilière", "immobilier"),
+    ("bakery", "Boulangerie", ""), ("", "Plombier", ""),
+])
+def test_theme_de_photos_selon_le_metier(type_principal, metier, theme):
+    assert photos.theme_de(type_principal, [], metier) == theme
+
+
+def test_garage_illustre_avec_ses_propres_photos(tmp_path, monkeypatch, google):
+    """Un garage garde la mise en page de sa famille mais reçoit les photos du thème « garage »."""
+    dossier = tmp_path / "phototheque"
+    (dossier / "garage").mkdir(parents=True)
+    (dossier / "garage" / "01.jpg").write_bytes(image("JPEG", (960, 640)))
+    (dossier / "catalogue.json").write_text(json.dumps([{"fichier": "01.jpg", "famille": "garage", "largeur": 960, "hauteur": 640,
+        "titre": "Moteur", "source": "https://stocksnap.io/photo/x", "auteur": "A", "licence": "CC0 1.0"}]), encoding="utf-8")
+    monkeypatch.setattr(photos, "DOSSIER", dossier)
+    photos.catalogue.cache_clear()
+    import asyncio
+    from demo_express import places
+    fiche = asyncio.run(places.details("CLE", PLACE_ID))
+    fiche = maquette.replace(fiche, type_principal="car_repair", types=["car_repair"], metier="Garage", photos=[])
+    ctx = maquette.contexte(fiche)
+    assert [p.nom for p in ctx["photos"]] == ["biblio/garage/01.jpg"] and ctx["famille"].code == "services"

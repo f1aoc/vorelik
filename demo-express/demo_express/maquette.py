@@ -189,9 +189,15 @@ def famille_retenue(fiche: Fiche, options: Options | None = None) -> Famille:
     return famille_de(fiche.type_principal, fiche.types, fiche.metier)
 
 
+def illustrations(fiche: Fiche, famille: Famille) -> list:
+    """Photos d'illustration du métier (garage, fleuriste, immobilier…), sinon celles de la famille."""
+    theme = phototheque.theme_de(fiche.type_principal, fiche.types, fiche.metier)
+    return phototheque.bibliotheque(theme) or phototheque.bibliotheque(famille.code)
+
+
 def photos_proposees(fiche: Fiche, famille: Famille, importees: list | None = None) -> list:
     """Toutes les photos que le vendeur peut choisir : importées, Google (aperçu seulement), illustrations."""
-    return [*(importees or []), *fiche.photos, *phototheque.bibliotheque(famille.code)]
+    return [*(importees or []), *fiche.photos, *illustrations(fiche, famille)]
 
 
 def photos_retenues(fiche: Fiche, options: Options, famille: Famille, importees: list | None, export: bool) -> list:
@@ -202,7 +208,7 @@ def photos_retenues(fiche: Fiche, options: Options, famille: Famille, importees:
     ici » s'il n'en reste plus) ; par défaut, photos importées puis illustrations.
     """
     importees = importees or []
-    biblio = phototheque.bibliotheque(famille.code)
+    biblio = illustrations(fiche, famille)
     if options.photos is None:
         choisies = [*importees, *([] if export else fiche.photos)] or biblio
         if export:  # photothèque vide (ou absente) : emplacements « Vos photos ici »
