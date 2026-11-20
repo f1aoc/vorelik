@@ -213,3 +213,47 @@ def test_pied_de_page_de_l_export_signe_par_l_agence(client, google, phototheque
     reglages.enregistrer_vendeur("Camille Durand", "", "", "")
     export = html.unescape(client.get(f"/maquette/{PLACE_ID}", params={"export": 1}).text)
     assert "Maquette réalisée par Camille Durand" in export
+
+
+@pytest.fixture
+def phototheque_themes(tmp_path, monkeypatch):
+    """Photothèque factice : 1 photo « services » et 1 photo « fleuriste »."""
+    dossier = tmp_path / "phototheque-themes"
+    lignes = []
+    for theme in ("services", "fleuriste"):
+        (dossier / theme).mkdir(parents=True)
+        (dossier / theme / "01.jpg").write_bytes(image("JPEG", (960, 640)))
+        lignes.append({"fichier": "01.jpg", "famille": theme, "largeur": 960, "hauteur": 640, "titre": theme,
+                       "source": "https://stocksnap.io/photo/x", "auteur": "A", "licence": "CC0 1.0"})
+    (dossier / "catalogue.json").write_text(json.dumps(lignes), encoding="utf-8")
+    monkeypatch.setattr(photos, "DOSSIER", dossier)
+    photos.catalogue.cache_clear()
+
+
+def test_fiche_sans_metier_devinee_d_apres_la_recherche(phototheque_themes):
+    from demo_express.familles import famille_de
+    assert photos.theme_de("", [], "", "fleuriste Saint-Andiol") == "fleuriste"
+    assert photos.theme_de("", [], "Boulangerie", "fleuriste") == ""  # la recherche ne sert que si la fiche est muette
+    assert photos.theme_de("", ["premise", "establishment"], "", "fleuriste") == "fleuriste"  # types génériques
+    assert photos.theme_de("bakery", ["bakery"], "", "fleuriste") == ""
+    assert famille_de("", [], "", "plombier Avignon").code == "batiment"
+
+
+def test_illustrations_choisies_par_le_vendeur(client, google, phototheque_themes):
+    atelier = client.get(f"/demo/{PLACE_ID}").text
+    assert '<option value="fleuriste"' in atelier and "Automatique" in atelier
+    client.post(f"/demo/{PLACE_ID}/options", data={"illustrations": "fleuriste", "modele": "services"})
+    export = client.get(f"/maquette/{PLACE_ID}", params={"export": 1}).text
+    assert export.count("data:image/jpeg;base64,") == 1
+    atelier = client.get(f"/demo/{PLACE_ID}").text
+    assert 'value="biblio/fleuriste/01.jpg"' in atelier and 'value="biblio/services/01.jpg"' not in atelier
+    assert '<option value="fleuriste" selected>' in atelier
+    client.post(f"/demo/{PLACE_ID}/options", data={"illustrations": "inconnu"})
+    assert '<option value="" selected>' in client.get(f"/demo/{PLACE_ID}").text
+
+
+def test_recherche_retenue_pour_une_fiche_muette(client, google, phototheque_themes):
+    client.get("/", params={"q": "fleuriste Lyon"})
+    atelier = client.get(f"/demo/{PLACE_ID}").text
+    # La fiche de test est une boulangerie (type « bakery ») : son métier l'emporte sur la recherche
+    assert 'value="biblio/fleuriste/01.jpg"' not in atelier

@@ -128,10 +128,12 @@ class Options:
     services: list[tuple[str, str]] | None = None
     photos: list[str] | None = None  # noms des photos retenues, dans l'ordre ; None = toutes, [] = aucune
     sections: list[str] | None = None  # sections affichées ; None = toutes
+    illustrations: str = ""  # collection de photos d'illustration ; vide = d'après le métier
 
     def nettoyer(self) -> "Options":
         """Valeurs sûres : couleur au format #RRGGBB (insérée dans le CSS), modèle et sections connus, textes bornés."""
         self.modele = self.modele if self.modele in FAMILLES else ""
+        self.illustrations = self.illustrations if self.illustrations in phototheque.themes() else ""
         self.couleur = self.couleur if COULEUR.fullmatch(self.couleur or "") else ""
         self.accroche = (self.accroche or "").strip()[: LONGUEURS["accroche"]]
         self.presentation = (self.presentation or "").strip()[: LONGUEURS["presentation"]]
@@ -188,18 +190,25 @@ def _environnement() -> Environment:
 def famille_retenue(fiche: Fiche, options: Options | None = None) -> Famille:
     if options and options.modele in FAMILLES:
         return FAMILLES[options.modele]
-    return famille_de(fiche.type_principal, fiche.types, fiche.metier)
+    return famille_de(fiche.type_principal, fiche.types, fiche.metier, fiche.indice)
 
 
-def illustrations(fiche: Fiche, famille: Famille) -> list:
+def theme_illustrations(fiche: Fiche, famille: Famille, choix: str = "") -> str:
+    """Collection de photos d'illustration : choix du vendeur, sinon thème du métier, sinon famille."""
+    if choix and phototheque.bibliotheque(choix):
+        return choix
+    theme = phototheque.theme_de(fiche.type_principal, fiche.types, fiche.metier, fiche.indice)
+    return theme if phototheque.bibliotheque(theme) else famille.code
+
+
+def illustrations(fiche: Fiche, famille: Famille, choix: str = "") -> list:
     """Photos d'illustration du métier (garage, fleuriste, immobilier…), sinon celles de la famille."""
-    theme = phototheque.theme_de(fiche.type_principal, fiche.types, fiche.metier)
-    return phototheque.bibliotheque(theme) or phototheque.bibliotheque(famille.code)
+    return phototheque.bibliotheque(theme_illustrations(fiche, famille, choix))
 
 
-def photos_proposees(fiche: Fiche, famille: Famille, importees: list | None = None) -> list:
+def photos_proposees(fiche: Fiche, famille: Famille, importees: list | None = None, choix: str = "") -> list:
     """Toutes les photos que le vendeur peut choisir : importées, Google (aperçu seulement), illustrations."""
-    return [*(importees or []), *fiche.photos, *illustrations(fiche, famille)]
+    return [*(importees or []), *fiche.photos, *illustrations(fiche, famille, choix)]
 
 
 def photos_retenues(fiche: Fiche, options: Options, famille: Famille, importees: list | None, export: bool) -> list:
@@ -210,7 +219,7 @@ def photos_retenues(fiche: Fiche, options: Options, famille: Famille, importees:
     ici » s'il n'en reste plus) ; par défaut, photos importées puis illustrations.
     """
     importees = importees or []
-    biblio = illustrations(fiche, famille)
+    biblio = illustrations(fiche, famille, options.illustrations)
     if options.photos is None:
         choisies = [*importees, *([] if export else fiche.photos)] or biblio
         if export:  # photothèque vide (ou absente) : emplacements « Vos photos ici »
@@ -235,6 +244,7 @@ def contexte(fiche: Fiche, options: Options | None = None, url_photo: Callable[.
     famille = famille_retenue(fiche, options)
     export = identite is not None
     photos = photos_retenues(fiche, options, famille, importees, export)
+    theme = theme_illustrations(fiche, famille, options.illustrations)
     avec_avis = bool(fiche.avis)
     if export:
         fiche = fiche_export(fiche, identite.nettoyer())
@@ -263,6 +273,7 @@ def contexte(fiche: Fiche, options: Options | None = None, url_photo: Callable[.
         "photos": photos,
         "auteur": auteur.strip(),
         "illustrations": any(getattr(p, "illustration", False) for p in photos),
+        "theme_illustrations": theme,
         "sections": sections,
         "url_photo": url_photo,
         "note": nombre(f"{fiche.note:.1f}") if fiche.note else "",

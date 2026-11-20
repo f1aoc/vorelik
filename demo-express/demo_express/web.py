@@ -21,6 +21,7 @@ import re
 import unicodedata
 import zipfile
 from collections import OrderedDict
+from dataclasses import replace
 from pathlib import Path
 from typing import Awaitable, Callable
 from urllib.parse import urlencode, urlsplit
@@ -107,6 +108,7 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None, capturer: Capt
     identites: dict[str, maquette.Identite] = {}  # vérifiées par le vendeur, pour l'export
     exports: Memoire = Memoire(5)  # (entreprise, empreinte de la maquette) → Captures
     importees = phototheque.Imports()  # photos importées par le vendeur, par entreprise
+    indices: dict[str, str] = {}  # entreprise → recherche du vendeur (métier deviné si la fiche n'en dit rien)
 
     def page(nom: str, request: Request, statut: int = 200, **valeurs) -> HTMLResponse:
         html = env.get_template(f"app/{nom}.html").render(request=request, langue=langue_courante(), **valeurs)
@@ -125,7 +127,8 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None, capturer: Capt
 
     async def fiche_de(place_id: str) -> places.Fiche:
         if place_id not in fiches:
-            fiches.garder(place_id, await places.details(cle(), place_id))
+            fiche = await places.details(cle(), place_id)
+            fiches.garder(place_id, replace(fiche, indice=indices.get(place_id, "")))
         return fiches[place_id]
 
     @app.get("/", response_class=HTMLResponse)
@@ -134,6 +137,10 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None, capturer: Capt
         if q.strip():
             try:
                 candidats = await places.rechercher(cle(), q)
+                for c in candidats:
+                    indices[c.id] = q.strip()[:120]
+                while len(indices) > 500:
+                    indices.pop(next(iter(indices)))
                 if not candidats:
                     erreur = _("Aucune entreprise trouvée : vérifiez l'orthographe ou ajoutez la ville.")
             except places.ErreurPlaces as e:
@@ -150,13 +157,16 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None, capturer: Capt
         ctx = maquette.contexte(fiche, options, importees=importees.liste(place_id))
         choisies = [p.nom for p in ctx["photos"] if p is not None]
         # Photos : celles retenues dans leur ordre, puis les autres (décochées)
-        proposees = maquette.photos_proposees(fiche, ctx["famille"], importees.liste(place_id))
+        proposees = maquette.photos_proposees(fiche, ctx["famille"], importees.liste(place_id), options.illustrations)
         for nom in choisies:  # illustration d'un autre modèle, retenue avant un changement de modèle
             if nom not in {p.nom for p in proposees} and (p := phototheque.photo_bibliotheque(nom)):
                 proposees.append(p)
         photos = [(p, p.nom in choisies) for p in sorted(proposees, key=lambda p: choisies.index(p.nom) if p.nom in choisies else 99)]
         langue = langue_courante()
+        collections = [(code, phototheque.NOMS_THEMES.get(code, {}).get(langue) or FAMILLES[code].nom[langue])
+                       for code in phototheque.themes() if code in FAMILLES or code in phototheque.NOMS_THEMES]
         return page("demo", request, fiche=fiche, ctx=ctx, photos=photos, retouche=place_id in retouches,
+                    collections=collections, choix_illustrations=options.illustrations,
                     modeles=[(f.code, f.modele[langue], f.nom[langue]) for f in FAMILLES.values()],
                     sections=[(s, s in ctx["sections"]) for s in maquette.SECTIONS],
                     noms_sections=NOMS_SECTIONS, palette=palette(ctx["famille"].couleur))
@@ -174,6 +184,10 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None, capturer: Capt
                 setattr(options, champ, "")
         if options.services is not None and [tuple(x) for x in defaut["services"]] == options.services:
             options.services = None
+        ancien = retouches.get(place_id, maquette.Options())
+        if options.illustrations != ancien.illustrations and options.photos is not None:
+            # Autre collection d'illustrations : les anciennes illustrations cochées laissent place aux nouvelles
+            options.photos = [n for n in options.photos if not n.startswith(phototheque.BIBLIO)] or None
         retouches[place_id] = options
         return Response(status_code=204)
 
@@ -427,7 +441,7 @@ def palette(couleur: str) -> list[str]:
 def options_du_formulaire(f) -> maquette.Options:
     options = maquette.Options(
         modele=f.get("modele", ""), accroche=f.get("accroche", ""), presentation=f.get("presentation", ""),
-        couleur=f.get("couleur", ""), action=f.get("action", ""),
+        couleur=f.get("couleur", ""), action=f.get("action", ""), illustrations=f.get("illustrations", ""),
     )
     if f.get("services_choisis"):
         options.services = list(zip(f.getlist("service_titre"), f.getlist("service_texte")))

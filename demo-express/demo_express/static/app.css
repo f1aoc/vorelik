@@ -122,3 +122,4 @@ input, select { font: inherit; }
 @media (max-width: 960px) { .envoi { grid-template-columns: 1fr; } .envoi-apercu { position: static; } }
 .bandeau-licence { margin: 0; border-radius: 0; text-align: center; }
 .carte form input[name=cle_licence] { font-family: ui-monospace, monospace; }
+#illustrations { width: 100%; padding: 10px 12px; border: 1px solid var(--bord); border-radius: 10px; background: #fff; margin: 6px 0 12px; }

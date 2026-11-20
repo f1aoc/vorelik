@@ -68,6 +68,14 @@
       <fieldset>
         <legend>{{ _("Photos") }}</legend>
         <input type="hidden" name="photos_choisies" value="1">
+        <label for="illustrations">{{ _("Photos d'illustration") }}</label>
+        <select id="illustrations" name="illustrations" data-recharger-page>
+          {% set auto = ctx.theme_illustrations %}
+          <option value="" {% if not choix_illustrations %}selected{% endif %}>{{ _("Automatique (d'après le métier)") }}{% for code, nom in collections if code == auto and not choix_illustrations %} : {{ nom }}{% endfor %}</option>
+          {% for code, nom in collections %}
+            <option value="{{ code }}" {% if code == choix_illustrations %}selected{% endif %}>{{ nom }}</option>
+          {% endfor %}
+        </select>
         <div class="import-photos">
           <label class="bouton bouton-discret" for="fichiers-photos">{{ _("Importer des photos") }}</label>
           <input id="fichiers-photos" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
@@ -163,7 +171,7 @@
         libre.value = e.target.value; libre.checked = true;
       }
       clearTimeout(minuterie);
-      minuterie = setTimeout(() => enregistrer(e.target.hasAttribute("data-recharger")), e.target.type === "text" || e.target.tagName === "TEXTAREA" ? 600 : 150);
+      minuterie = setTimeout(() => enregistrer(e.target.hasAttribute("data-recharger") || e.target.hasAttribute("data-recharger-page")), e.target.type === "text" || e.target.tagName === "TEXTAREA" ? 600 : 150);
     });
     // Modèle choisi : les textes par défaut du nouveau modèle remplacent ceux non retouchés
     formulaire.addEventListener("change", (e) => {

@@ -82,17 +82,33 @@ THEMES_MOTS = {
 }
 
 
-def theme_de(type_principal: str, types: list[str] | None = None, metier: str = "") -> str:
+NOMS_THEMES = {
+    "garage": {"fr": "Garages et automobile", "en": "Garages and cars"},
+    "fleuriste": {"fr": "Fleuristes", "en": "Florists"},
+    "immobilier": {"fr": "Immobilier", "en": "Real estate"},
+}
+
+
+def theme_de(type_principal: str, types: list[str] | None = None, metier: str = "", indice: str = "") -> str:
     """Thème de photos d'un métier (« garage », « fleuriste », « immobilier ») ; "" si aucun."""
     for t in [type_principal, *(types or [])]:
         for theme, liste in THEMES_TYPES.items():
             if t in liste.split():
                 return theme
-    libelle = f"{metier.lower()} "
-    for theme, mots in THEMES_MOTS.items():
-        if any(m in libelle for m in mots):
-            return theme
+    from demo_express.familles import TYPES
+    connus = set(TYPES) | {t for liste in THEMES_TYPES.values() for t in liste.split()}
+    muette = not metier and not any(t in connus for t in [type_principal, *(types or [])])
+    for libelle in (metier, indice if muette else ""):  # indice : recherche du vendeur, si la fiche est muette
+        libelle = f"{libelle.lower()} "
+        for theme, mots in THEMES_MOTS.items():
+            if libelle.strip() and any(m in libelle for m in mots):
+                return theme
     return ""
+
+
+def themes() -> list[str]:
+    """Codes des collections de la photothèque (familles et thèmes), dans l'ordre du catalogue."""
+    return list(dict.fromkeys(e.famille for e in catalogue().values()))
 
 
 def bibliotheque(famille: str) -> list[PhotoLibre]:

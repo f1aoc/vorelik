@@ -104,6 +104,7 @@ class Fiche:
     lien_maps: str
     site: str
     pays: str = ""  # code pays (FR…), d'après l'adresse
+    indice: str = ""  # recherche du vendeur (« fleuriste Saint-Andiol ») : métier deviné si la fiche n'en a pas
 
 
 def langue_api() -> dict:

@@ -197,12 +197,13 @@ MOTS = {
 }
 
 
-def famille_de(type_principal: str, types: list[str] | None = None, metier: str = "") -> Famille:
+def famille_de(type_principal: str, types: list[str] | None = None, metier: str = "", indice: str = "") -> Famille:
     for t in [type_principal, *(types or [])]:
         if t in TYPES:
             return FAMILLES[TYPES[t]]
-    libelle = metier.lower()
-    for code, mots in MOTS.items():
-        if any(m in libelle for m in mots):
-            return FAMILLES[code]
+    muette = not metier  # aucun type reconnu (sinon déjà retourné) ni libellé de métier
+    for libelle in (metier.lower(), indice.lower() if muette else ""):  # indice : recherche du vendeur, fiche muette
+        for code, mots in MOTS.items():
+            if libelle and any(m in libelle for m in mots):
+                return FAMILLES[code]
     return FAMILLES["services"]
