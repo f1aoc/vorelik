@@ -59,10 +59,11 @@ TEXTES = {
         "voir_sur": "Voir sur",
         "avis": "avis",
         "credits": "Informations, photos et avis :",
-        "credits_export": "Maquette à compléter avec vos photos, vos avis et vos horaires",
+        "credits_export": "Nous complèterons votre site par vos photos, vos avis et vos horaires.",
         "illustrations": "Photos d'illustration",
         "illustration": "Photo d'illustration",
         "realise": "Maquette réalisée avec Démo Express",
+        "realise_par": "Maquette réalisée par {auteur}",
         "horaires_absents": "Horaires communiqués sur demande.",
         "selection_avis": "3 avis avec commentaire, parmi les plus pertinents selon",
         "verification_avis": "Les avis ne sont pas vérifiés par Google Maps, qui recherche et supprime les faux contenus.",
@@ -92,10 +93,11 @@ TEXTES = {
         "voir_sur": "View on",
         "avis": "reviews",
         "credits": "Information, photos and reviews:",
-        "credits_export": "Mockup to be completed with your photos, reviews and opening hours",
+        "credits_export": "We will complete your website with your photos, reviews and opening hours.",
         "illustrations": "Illustrative photos",
         "illustration": "Illustrative photo",
         "realise": "Mockup made with Démo Express",
+        "realise_par": "Mockup made by {auteur}",
         "horaires_absents": "Opening hours available on request.",
         "selection_avis": "3 reviews with comments, among the most relevant according to",
         "verification_avis": "Reviews are not verified by Google Maps, which checks for and removes fake content.",
@@ -224,8 +226,9 @@ def photos_retenues(fiche: Fiche, options: Options, famille: Famille, importees:
 
 
 def contexte(fiche: Fiche, options: Options | None = None, url_photo: Callable[..., str] = url_photo_apercu,
-             identite: Identite | None = None, importees: list | None = None) -> dict:
+             identite: Identite | None = None, importees: list | None = None, auteur: str = "") -> dict:
     """identite donnée : contexte d'export (aucun contenu Google), sinon aperçu en direct.
+    auteur : agence (ou nom) du vendeur, signée en pied de page de l'export.
     importees : photos importées par le vendeur pour cette entreprise (photos.PhotoLibre)."""
     options = (options or Options()).nettoyer()
     langue = langue_courante()
@@ -258,6 +261,7 @@ def contexte(fiche: Fiche, options: Options | None = None, url_photo: Callable[.
         "atouts": famille.atouts[langue],
         "couleur": options.couleur or famille.couleur,
         "photos": photos,
+        "auteur": auteur.strip(),
         "illustrations": any(getattr(p, "illustration", False) for p in photos),
         "sections": sections,
         "url_photo": url_photo,
@@ -269,6 +273,6 @@ def contexte(fiche: Fiche, options: Options | None = None, url_photo: Callable[.
 
 
 def rendre(fiche: Fiche, options: Options | None = None, url_photo: Callable[..., str] = url_photo_apercu,
-           identite: Identite | None = None, importees: list | None = None) -> str:
-    ctx = contexte(fiche, options, url_photo, identite, importees)
+           identite: Identite | None = None, importees: list | None = None, auteur: str = "") -> str:
+    ctx = contexte(fiche, options, url_photo, identite, importees, auteur)
     return _environnement().get_template(f"maquette/{ctx['famille'].code}.html").render(**ctx)

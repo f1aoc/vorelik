@@ -141,7 +141,11 @@
   <footer class="pied">
     <div class="conteneur">
       <span>© <strong>{{ fiche.nom }}</strong></span>
-      <span>{% if export %}{{ t.credits_export }}{% else %}{{ t.credits }} {{ m.google_maps(true) }}{% endif %}{% if illustrations %} · {{ t.illustrations }}{% endif %} · {{ t.realise }}</span>
+      {% if export %}
+      <span>{{ t.credits_export }}{% if illustrations %} {{ t.illustrations }}.{% endif %}{% if auteur %} {{ t.realise_par.format(auteur=auteur) }}{% endif %}</span>
+      {% else %}
+      <span>{{ t.credits }} {{ m.google_maps(true) }}{% if illustrations %} · {{ t.illustrations }}{% endif %} · {{ t.realise }}</span>
+      {% endif %}
     </div>
   </footer>
 </body>

@@ -1,5 +1,6 @@
 """Photothèque d'illustration (CC0) et photos importées par le vendeur : utilisables dans les fichiers envoyés."""
 
+import html
 import io
 import json
 
@@ -199,3 +200,16 @@ def test_garage_illustre_avec_ses_propres_photos(tmp_path, monkeypatch, google):
     fiche = maquette.replace(fiche, type_principal="car_repair", types=["car_repair"], metier="Garage", photos=[])
     ctx = maquette.contexte(fiche)
     assert [p.nom for p in ctx["photos"]] == ["biblio/garage/01.jpg"] and ctx["famille"].code == "services"
+
+
+def test_pied_de_page_de_l_export_signe_par_l_agence(client, google, phototheque, reglages):
+    client.get(f"/demo/{PLACE_ID}")
+    export = html.unescape(client.get(f"/maquette/{PLACE_ID}", params={"export": 1}).text)
+    assert "Nous complèterons votre site par vos photos, vos avis et vos horaires. Photos d'illustration." in export
+    assert "Démo Express" not in export and "réalisée par" not in export  # vendeur sans nom ni agence
+    reglages.enregistrer_vendeur("Camille Durand", "Agence Pixel", "", "")
+    export = html.unescape(client.get(f"/maquette/{PLACE_ID}", params={"export": 1}).text)
+    assert "Maquette réalisée par Agence Pixel" in export
+    reglages.enregistrer_vendeur("Camille Durand", "", "", "")
+    export = html.unescape(client.get(f"/maquette/{PLACE_ID}", params={"export": 1}).text)
+    assert "Maquette réalisée par Camille Durand" in export

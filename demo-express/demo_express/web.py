@@ -243,8 +243,9 @@ def creer_app(reglages: Reglages, hotes: list[str] | None = None, capturer: Capt
         return phototheque.uri(contenu) if contenu else ""
 
     def html_export(place_id: str) -> str:
+        vendeur = reglages.vendeur
         return maquette.rendre(fiches[place_id], retouches.get(place_id), photo_integree, identite=identite_de(place_id),
-                               importees=importees.liste(place_id))
+                               importees=importees.liste(place_id), auteur=vendeur.agence or vendeur.nom)
 
     def message_de(place_id: str) -> messages.Message:
         fiche, identite = fiches[place_id], identite_de(place_id)

@@ -87,7 +87,7 @@ def test_export_sans_aucun_contenu_google(code):
     assert "Boulangerie Martin" in page and "Lyon" in page and 'href="tel:0478000000"' in page
     assert "8 place Bellecour, 69005 Lyon" in page  # adresse vérifiée par le vendeur
     assert "Vos photos ici" in page and "Vos horaires d&#39;ouverture" in page
-    assert "Maquette à compléter avec vos photos" in page and "Maquette de démonstration" in page
+    assert "Nous complèterons votre site par vos photos" in page and "Maquette de démonstration" in page
 
 
 def test_export_garde_les_retouches_du_vendeur():
